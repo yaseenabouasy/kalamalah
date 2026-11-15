@@ -59,7 +59,7 @@ function renderSalahTvOverlay(times: SalahTimesData): void {
     const nowMin = now.getHours() * 60 + now.getMinutes();
     for (const p of prayers) {
       const [h, m] = p.time.split(':').map(Number);
-      if (Number.isFinite(h) && Number.isFinite(m) && h * 60 + m > nowMin) {
+      if (h !== undefined && m !== undefined && Number.isFinite(h) && Number.isFinite(m) && h * 60 + m > nowMin) {
         const diff = h * 60 + m - nowMin;
         return { name: p.name, ar: p.ar, diffMin: diff };
       }
