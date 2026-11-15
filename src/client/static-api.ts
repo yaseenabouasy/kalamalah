@@ -2,8 +2,6 @@ import type { NormalizedSurahTimings, AyahTimingSegment } from '../server/timing
 import type { BootstrapCatalog } from './quran-player';
 
 const API_BASE = 'https://api.kalamalah.com';
-const N8N_AI_WEBHOOK_URL =
-  'https://n8n.srv787268.hstgr.cloud/webhook/0eaacdaa-e724-4565-b3b3-21b7f92a6059/chat';
 
 let detectedStaticMode = false;
 
@@ -493,71 +491,4 @@ export async function fetchTafseerAyahApi(
     arabicText: ayah?.text ?? '',
     tafseerText: ayah?.taf ?? '',
   };
-}
-
-export async function postAiChatApi(
-  chatInput: string,
-  sessionId: string
-): Promise<{ ok: boolean; reply: string }> {
-  if (!isStaticMode()) {
-    try {
-      const res = await fetch('/api/ai-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatInput, sessionId }),
-      });
-      if (res.ok && (res.headers.get('content-type') || '').includes('json')) {
-        return await res.json();
-      }
-      if (res.status === 404 || res.status === 405) markStaticMode();
-    } catch {}
-  }
-
-  // Direct JS webhook call for static GitHub Pages host
-  try {
-    const res = await fetch(N8N_AI_WEBHOOK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/plain, */*',
-      },
-      body: JSON.stringify({ action: 'sendMessage', sessionId, chatInput }),
-      signal: AbortSignal.timeout(25000),
-    });
-    const rawText = await res.text();
-    let reply = '';
-    if (rawText.includes('{"type":"') && rawText.includes('"content":')) {
-      let combined = '';
-      for (const line of rawText.split('\n')) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const chunk = JSON.parse(trimmed);
-          if (typeof chunk.content === 'string') combined += chunk.content;
-          else if (typeof chunk.output === 'string') combined += chunk.output;
-          else if (typeof chunk.reply === 'string') combined += chunk.reply;
-        } catch {}
-      }
-      if (combined.trim()) reply = combined.trim();
-    }
-    if (!reply) {
-      try {
-        const parsed = JSON.parse(rawText);
-        const item = Array.isArray(parsed) ? parsed[0] : parsed;
-        reply =
-          item?.output || item?.reply || item?.text || item?.message || item?.response || '';
-      } catch {
-        reply = rawText.trim();
-      }
-    }
-    return {
-      ok: true,
-      reply: reply || 'بارك الله فيك، لم أتمكن من استخراج الإجابة حالياً.',
-    };
-  } catch {
-    return {
-      ok: false,
-      reply: 'تعذر الاتصال بالمساعد الذكي حالياً، يرجى المحاولة مرة أخرى.',
-    };
-  }
 }

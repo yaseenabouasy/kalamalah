@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { findReciter, getSurahAudioUrl, type ReciterInfo } from './reciters-catalog';
 
 export interface WordTimingSegment {
@@ -23,6 +25,45 @@ export interface NormalizedSurahTimings {
 }
 
 const timingsMemoryCache = new Map<string, NormalizedSurahTimings>();
+
+function loadTempVocalOffsets(): Map<string, number> {
+  const map = new Map<string, number>();
+  try {
+    const filePath = path.resolve(process.cwd(), 'test_001.json');
+    if (!fs.existsSync(filePath)) return map;
+    const entries = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as Array<{
+      reciter?: string;
+      surah?: number;
+      ayah1_start_ms?: number;
+    }>;
+    for (const item of entries) {
+      if (item.reciter && item.surah && item.ayah1_start_ms && item.ayah1_start_ms > 0) {
+        map.set(`${item.reciter}:${item.surah}`, item.ayah1_start_ms);
+      }
+    }
+  } catch {
+    // Ignore missing/invalid temp file
+  }
+  return map;
+}
+
+const tempVocalOffsets = loadTempVocalOffsets();
+
+function applyTempVocalOffset(timings: NormalizedSurahTimings): NormalizedSurahTimings {
+  const offsetMs = tempVocalOffsets.get(`${timings.reciterSlug}:${timings.surahNumber}`);
+  if (!offsetMs || timings.ayahs.length === 0) return timings;
+  for (const ayah of timings.ayahs) {
+    ayah.startMs += offsetMs;
+    ayah.endMs += offsetMs;
+    if (ayah.words) {
+      for (const w of ayah.words) {
+        w.startMs += offsetMs;
+        w.endMs += offsetMs;
+      }
+    }
+  }
+  return timings;
+}
 
 /**
  * Multi-source Quran Timings Resolver:
@@ -53,8 +94,9 @@ export async function resolveSurahTimings(
         const json = (await res.json()) as any;
         const parsed = parseKalamalahTimingsJson(json, reciter, surah, defaultAudioUrl);
         if (parsed && parsed.ayahs.length > 0) {
-          timingsMemoryCache.set(cacheKey, parsed);
-          return parsed;
+          const adjusted = applyTempVocalOffset(parsed);
+          timingsMemoryCache.set(cacheKey, adjusted);
+          return adjusted;
         }
       }
     } catch {
@@ -71,8 +113,9 @@ export async function resolveSurahTimings(
         const json = (await res.json()) as any;
         const parsed = parseQuranCdnTimingsJson(json, reciter, surah, defaultAudioUrl);
         if (parsed && parsed.ayahs.length > 0) {
-          timingsMemoryCache.set(cacheKey, parsed);
-          return parsed;
+          const adjusted = applyTempVocalOffset(parsed);
+          timingsMemoryCache.set(cacheKey, adjusted);
+          return adjusted;
         }
       }
     } catch {
@@ -90,8 +133,9 @@ export async function resolveSurahTimings(
         const txt = await res.text();
         const parsed = parseIslamOnlineTxtTimings(txt, reciter, surah, defaultAudioUrl);
         if (parsed && parsed.ayahs.length > 0) {
-          timingsMemoryCache.set(cacheKey, parsed);
-          return parsed;
+          const adjusted = applyTempVocalOffset(parsed);
+          timingsMemoryCache.set(cacheKey, adjusted);
+          return adjusted;
         }
       }
     } catch {
@@ -108,8 +152,9 @@ export async function resolveSurahTimings(
         const json = (await res.json()) as any;
         const parsed = parseMp3QuranTimingsJson(json, reciter, surah, defaultAudioUrl);
         if (parsed && parsed.ayahs.length > 0) {
-          timingsMemoryCache.set(cacheKey, parsed);
-          return parsed;
+          const adjusted = applyTempVocalOffset(parsed);
+          timingsMemoryCache.set(cacheKey, adjusted);
+          return adjusted;
         }
       }
     } catch {

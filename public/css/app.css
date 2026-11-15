@@ -1,3 +1,33 @@
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ==========================================================================
    Kalamalah Player — Core Design System & Quran Reader
    Fonts from main/fonts:
@@ -277,6 +307,36 @@ button {
   font-feature-settings: "kern" 1, "liga" 1, "clig" 1, "calt" 1;
 }
 
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ==========================================================================
    Lightweight Geometric Ramadan Architectural Linework (Zero Blur Blobs)
    ========================================================================== */
@@ -303,6 +363,36 @@ button {
 .ramadan-lantern-geometry {
   transform-origin: 0px 0px;
   will-change: transform;
+}
+
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ==========================================================================
@@ -876,6 +966,36 @@ html[dir="ltr"] .mobile-nav-sidebar {
   color: var(--gold);
 }
 
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ==========================================================================
    Index Header & Buttons
    ========================================================================== */
@@ -1006,6 +1126,36 @@ html[dir="ltr"] .mobile-nav-sidebar {
 
 .btn-outline-sm:active {
   transform: scale(0.97);
+}
+
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ==========================================================================
@@ -1255,6 +1405,36 @@ html[dir="ltr"] .mobile-nav-sidebar {
   transform: scale(0.95);
 }
 
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ==========================================================================
    Juzs Grid & Mushaf Jumper
    ========================================================================== */
@@ -1389,6 +1569,36 @@ html[dir="ltr"] .mobile-nav-sidebar {
 .mp-juz {
   font-size: 0.74rem;
   color: var(--text-muted);
+}
+
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ==========================================================================
@@ -1579,6 +1789,36 @@ html[dir="ltr"] .mobile-nav-sidebar {
 .tafseer-book-pill:hover {
   border-color: var(--border-strong);
   color: var(--gold);
+}
+
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ==========================================================================
@@ -2742,6 +2982,36 @@ html[data-theme="light"] .surah-listen-hero-title strong {
   color: var(--text-muted);
 }
 
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ==========================================================================
    Raw Mushaf Page Viewer (/mushaf-:page)
    ========================================================================== */
@@ -2875,6 +3145,36 @@ html[data-theme="light"] .surah-listen-hero-title strong {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ==========================================================================
@@ -3165,6 +3465,36 @@ html[data-theme="light"] .surah-listen-hero-title strong {
   border-color: transparent;
 }
 
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ==========================================================================
    Juz, Tafseer, Tajweed Guide, Languages, & 404 Views
    ========================================================================== */
@@ -3356,6 +3686,36 @@ html[data-theme="light"] .surah-listen-hero-title strong {
   justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ==========================================================================
@@ -3621,6 +3981,36 @@ html[data-theme="light"] .qp-lyrics-icon-btn img {
   }
 }
 
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ==========================================================================
    Site Footer, Modals, Share Dialog, & Reading Tracker
    ========================================================================== */
@@ -3843,6 +4233,36 @@ html[data-theme="light"] .qp-lyrics-icon-btn img {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+/* Audio fetching / buffering spinner on play buttons */
+#qp-play-toggle-btn.is-loading,
+#aml-play-btn.is-loading,
+#hero-play-btn.is-loading {
+  position: relative;
+}
+
+#qp-play-toggle-btn.is-loading > svg,
+#aml-play-btn.is-loading > svg,
+#hero-play-btn.is-loading > svg {
+  opacity: 0;
+}
+
+#qp-play-toggle-btn.is-loading::after,
+#aml-play-btn.is-loading::after,
+#hero-play-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: qp-spin 0.7s linear infinite;
+}
+
+@keyframes qp-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ==========================================================================
@@ -4996,41 +5416,8 @@ input[type='range']:active::-webkit-slider-thumb {
 }
 
 @media (max-width: 640px) {
-  .ai-fab-btn {
-    width: 46px;
-    height: 46px;
-    right: 14px;
-    bottom: calc(var(--player-bar-height) + 14px);
-  }
-  .ai-widget-panel {
-    right: 14px;
-    bottom: calc(var(--player-bar-height) + 70px);
-  }
   .cookie-consent-banner {
     flex-direction: column;
     align-items: stretch;
   }
-}
-
-.ai-chat-input-bar {
-  padding: 14px 22px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-elevated);
-  display: flex;
-  gap: 10px;
-}
-
-.ai-chat-text-input {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 0.92rem;
-  outline: none;
-}
-
-.ai-chat-text-input:focus {
-  border-color: var(--gold);
 }

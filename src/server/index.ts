@@ -13,7 +13,6 @@ import { findReciter, getReciterPhotoUrl, getSurahAudioUrl, RECITERS_CATALOG } f
 import { resolveSurahTimings } from './timings-service';
 import { renderHomePage } from './views/home';
 import {
-  renderAiAssistantPage,
   renderAsmaUlHusnaPage,
   renderDuasPage,
 } from './views/islamic-pages';
@@ -347,113 +346,6 @@ app.get('/api/download/:reciter/:surah', async (c) => {
   return c.redirect(audioUrl, 302);
 });
 
-const N8N_AI_WEBHOOK_URL =
-  'https://n8n.srv787268.hstgr.cloud/webhook/0eaacdaa-e724-4565-b3b3-21b7f92a6059/chat';
-
-app.post('/api/ai-chat', async (c) => {
-  try {
-    const body = (await c.req.json().catch(() => ({}))) as {
-      chatInput?: string;
-      message?: string;
-      sessionId?: string;
-    };
-    const chatInput = String(body.chatInput || body.message || '').trim().slice(0, 4000);
-    const sessionId = String(body.sessionId || 'kalamalah-web-session').trim().slice(0, 128);
-    if (!chatInput) {
-      return c.json({ ok: false, error: 'يرجى كتابة سؤالك أولاً.' }, 400);
-    }
-
-    const res = await fetch(N8N_AI_WEBHOOK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/plain, */*',
-      },
-      body: JSON.stringify({
-        action: 'sendMessage',
-        sessionId,
-        chatInput,
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
-
-    const rawText = await res.text();
-    let reply = '';
-
-    // Handle ndjson streaming formats (e.g. {"type":"begin"}...{"type":"item","content":"..."}...{"type":"end"})
-    if (rawText.includes('{"type":"') && rawText.includes('"content":')) {
-      const lines = rawText.split('\n');
-      let combined = '';
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const chunk = JSON.parse(trimmed);
-          if (typeof chunk.content === 'string') {
-            combined += chunk.content;
-          } else if (typeof chunk.output === 'string') {
-            combined += chunk.output;
-          } else if (typeof chunk.reply === 'string') {
-            combined += chunk.reply;
-          }
-        } catch {}
-      }
-      if (combined.trim()) {
-        reply = combined.trim();
-      }
-    }
-
-    if (!reply) {
-      try {
-        const parsed = JSON.parse(rawText);
-        const item = Array.isArray(parsed) ? parsed[0] : parsed;
-        reply =
-          item?.output ||
-          item?.reply ||
-          item?.text ||
-          item?.message ||
-          item?.response ||
-          (typeof item === 'string' ? item : '');
-      } catch {
-        reply = rawText.trim();
-      }
-    }
-
-    // If reply itself is still JSON-encoded or ndjson string, parse it again
-    if (typeof reply === 'string' && reply.includes('{"type":"') && reply.includes('"content":')) {
-      const lines = reply.split('\n');
-      let nestedCombined = '';
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const chunk = JSON.parse(trimmed);
-          if (typeof chunk.content === 'string') {
-            nestedCombined += chunk.content;
-          }
-        } catch {}
-      }
-      if (nestedCombined.trim()) {
-        reply = nestedCombined.trim();
-      }
-    }
-
-    if (!reply) {
-      reply = 'بارك الله فيك. لم أتمكن من استخراج الإجابة حالياً، يرجى إعادة المحاولة بعد قليل.';
-    }
-
-    return c.json({ ok: true, reply });
-  } catch {
-    return c.json(
-      {
-        ok: false,
-        reply: 'تعذر الاتصال بخادم المساعد الذكي حالياً. يرجى المحاولة مرة أخرى.',
-      },
-      200
-    );
-  }
-});
-
 app.get('/api/tafseer/:bookId/:surah/:ayah', async (c) => {
   const bookId = Number(c.req.param('bookId') || 1);
   const surahNum = Number(c.req.param('surah') || 1);
@@ -522,11 +414,6 @@ app.get('/names', async (c) => {
   return sendPrerendered(c, 'asma-ul-husna', async () => renderAsmaUlHusnaPage());
 });
 app.get('/asma-ul-husna', (c) => c.redirect('/names', 301));
-
-// Kalamalah AI Assistant Page
-app.get('/ai', async (c) => {
-  return sendPrerendered(c, 'ai-assistant', async () => renderAiAssistantPage());
-});
 
 // Mushaf Root Redirect
 app.get('/mushaf', (c) => c.redirect('/mushaf-1', 302));

@@ -15,8 +15,7 @@ export interface LayoutProps {
     | 'tajweed'
     | 'languages'
     | 'duas'
-    | 'names'
-    | 'ai';
+    | 'names';
   bodyContent: string;
   pageBootstrapData?: Record<string, unknown>;
 }
@@ -160,7 +159,6 @@ export function buildSitemapXml(baseUrl = 'https://kalamalah.com'): string {
     { path: '/languages', priority: '0.8', changefreq: 'monthly' },
     { path: '/duas', priority: '0.8', changefreq: 'monthly' },
     { path: '/names', priority: '0.8', changefreq: 'monthly' },
-    { path: '/ai', priority: '0.7', changefreq: 'monthly' },
   ];
 
   for (const s of SURAHS_META) {
@@ -352,6 +350,10 @@ export function renderLayout(props: LayoutProps): string {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
           <span data-i18n="navHome">Home</span>
         </a>
+        <a href="/mushaf-1" class="nav-pill ${props.activeNav === 'mushaf' ? 'active' : ''}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <span data-i18n="navMushaf">Mushaf</span>
+        </a>
         <a href="/reciters" class="nav-pill ${props.activeNav === 'reciters' ? 'active' : ''}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
           <span data-i18n="navReciters">Reciters</span>
@@ -363,6 +365,18 @@ export function renderLayout(props: LayoutProps): string {
         <a href="/tajweed" class="nav-pill ${props.activeNav === 'tajweed' ? 'active' : ''}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="m9 10 2 2 4-4"/></svg>
           <span data-i18n="navTajweed">Tajweed</span>
+        </a>
+        <a href="/duas" class="nav-pill ${props.activeNav === 'duas' ? 'active' : ''}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+          <span data-i18n="navDuas">Duas</span>
+        </a>
+        <a href="/names" class="nav-pill ${props.activeNav === 'names' ? 'active' : ''}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m12 8 4 4-4 4-4-4z"/></svg>
+          <span data-i18n="navNames">99 Names</span>
+        </a>
+        <a href="/languages" class="nav-pill ${props.activeNav === 'languages' ? 'active' : ''}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span data-i18n="navTranslations">Translations</span>
         </a>
       </nav>
 
@@ -426,7 +440,6 @@ export function renderLayout(props: LayoutProps): string {
               <a href="/tajweed" class="mobile-nav-link ${props.activeNav === 'tajweed' ? 'active' : ''}" data-i18n="navTajweed">التجويد</a>
               <a href="/duas" class="mobile-nav-link ${props.activeNav === 'duas' ? 'active' : ''}" data-i18n="navDuas">الأدعية والأذكار</a>
               <a href="/names" class="mobile-nav-link ${props.activeNav === 'names' ? 'active' : ''}" data-i18n="navNames">أسماء الله الحسنى</a>
-              <a href="/ai" class="mobile-nav-link ${props.activeNav === 'ai' ? 'active' : ''}" data-i18n="navAi">المساعد القرآني الذكي</a>
               <a href="/languages" class="mobile-nav-link ${props.activeNav === 'languages' ? 'active' : ''}" data-i18n="navTranslations">الترجمات العالمية</a>
             </div>
           </div>
@@ -449,7 +462,7 @@ export function renderLayout(props: LayoutProps): string {
                 <span>IslamOnline.net (فتاوى وبحوث)</span>
               </a>
 
-              <a href="https://github.com/yxqo41/kalamalah-player" target="_blank" rel="noopener noreferrer" class="mobile-action-pill" dir="ltr">
+              <a href="https://github.com/yaseenabouasy/kalamalah" target="_blank" rel="noopener noreferrer" class="mobile-action-pill" dir="ltr">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.17 1.18a11.05 11.05 0 0 1 5.78 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.24 2.75.12 3.04.74.81 1.18 1.83 1.18 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
                 <span>GitHub Source</span>
               </a>
@@ -479,12 +492,6 @@ export function renderLayout(props: LayoutProps): string {
         <strong data-i18n="appTitle">كلام الله</strong>
         <span class="footer-sep">/</span>
         <a href="/mushaf-1" data-i18n="navMushaf">المصحف</a>
-        <a href="/reciters" data-i18n="navReciters">القراء</a>
-        <a href="/tafseer-1" data-i18n="navTafseer">التفسير</a>
-        <a href="/tajweed" data-i18n="navTajweed">التجويد</a>
-        <a href="/duas" data-i18n="navDuas">الأدعية</a>
-        <a href="/names" data-i18n="navNames">أسماء الله الحسنى</a>
-        <a href="/ai" data-i18n="navAi">المساعد الذكي</a>
         <a href="https://islamonline.net" target="_blank" rel="noopener noreferrer" class="footer-iol-link" title="شبكة إسلام أون لاين للفتاوى والمقالات الإسلامية (ترشيح معرفي غير رسمي)">IslamOnline.net</a>
         <a href="https://api.kalamalah.com/docs" target="_blank" rel="noopener noreferrer">API</a>
         <a href="https://github.com/yxqo41/kalamalah-mobile/releases/latest" target="_blank" rel="noopener noreferrer" data-i18n="androidApp">تطبيق الأندرويد</a>
@@ -553,53 +560,9 @@ export function renderLayout(props: LayoutProps): string {
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
   </button>
 
-  <!-- Floating AI Assistant Bubble & Chat Window with Saved History -->
-  <button type="button" id="ai-fab-btn" class="ai-fab-btn" title="Kalamalah AI" aria-label="Open AI Assistant" aria-expanded="false" aria-controls="ai-widget-panel">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2L14.6 9.4L22 12L14.6 14.6L12 22L9.4 14.6L2 12L9.4 9.4L12 2Z" />
-    </svg>
-  </button>
-
-  <aside id="ai-widget-panel" class="ai-widget-panel hidden" role="dialog" aria-label="Kalamalah AI Assistant">
-    <header class="ai-widget-header">
-      <div class="ai-widget-title-wrap">
-        <span class="ai-widget-spark" aria-hidden="true">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.6 9.4L22 12L14.6 14.6L12 22L9.4 14.6L2 12L9.4 9.4L12 2Z"/></svg>
-        </span>
-        <div>
-          <strong id="ai-widget-title">Kalamalah AI</strong>
-          <span class="ai-widget-sub" id="ai-widget-sub">Quran, Tafseer & Duas</span>
-        </div>
-      </div>
-      <div class="ai-widget-hdr-actions">
-        <button type="button" id="ai-widget-history-btn" class="ai-widget-hdr-btn" title="Saved Chats" aria-label="Saved Chats">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
-        </button>
-        <button type="button" id="ai-widget-new-btn" class="ai-widget-hdr-btn" title="New Chat" aria-label="New Chat">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </button>
-        <button type="button" id="ai-widget-close-btn" class="ai-widget-hdr-btn" title="Close" aria-label="Close">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-    </header>
-
-    <div id="ai-widget-history-view" class="ai-widget-history-view hidden"></div>
-
-    <div id="ai-widget-chat-view" class="ai-widget-chat-view">
-      <div id="ai-widget-messages" class="ai-widget-messages" role="log" aria-live="polite"></div>
-      <form id="ai-widget-form" class="ai-widget-form" autocomplete="off">
-        <input type="text" id="ai-widget-input" class="ai-widget-input" placeholder="Ask about Quran, Tafseer, or Duas..." required />
-        <button type="submit" id="ai-widget-send-btn" class="ai-widget-send-btn" aria-label="Send">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        </button>
-      </form>
-    </div>
-  </aside>
-
   <!-- Cookie & Local Preferences Banner -->
   <div id="cookie-consent-banner" class="cookie-consent-banner hidden" role="region" aria-label="Cookie and storage preferences">
-    <p id="cookie-consent-text">We use browser storage for your theme, language, bookmarks, reading position, and AI chat history.</p>
+    <p id="cookie-consent-text">We use browser storage for your theme, language, bookmarks, and reading position.</p>
     <div class="cookie-consent-actions">
       <button type="button" id="cookie-accept-btn" class="btn-primary-gold sm">Accept</button>
       <button type="button" id="cookie-essential-btn" class="btn-glass-sm">Essential Only</button>
@@ -630,7 +593,7 @@ export function renderLayout(props: LayoutProps): string {
             <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
             <span>yaseen.aboasy@gmail.com</span>
           </a>
-          <a href="https://github.com/yxqo41/kalamalah-player" target="_blank" rel="noopener noreferrer" class="dev-gh-link">
+          <a href="https://github.com/yaseenabouasy/kalamalah" target="_blank" rel="noopener noreferrer" class="dev-gh-link">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.17 1.18a11.05 11.05 0 0 1 5.78 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.24 2.75.12 3.04.74.81 1.18 1.83 1.18 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
             <span>المصدر على GitHub</span>
           </a>
@@ -711,8 +674,8 @@ export function renderLayout(props: LayoutProps): string {
         </button>
 
         <button type="button" id="qp-play-toggle-btn" class="qp-play-main-btn aero-player" title="تشغيل / إيقاف مؤقت" aria-label="تشغيل">
-          <svg class="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6.8 4 17.2Q4 21 7.31 19.14L18.26 12.98Q20 12 18.26 11.02L7.31 4.86Q4 3 4 6.8Z"/></svg>
-          <svg class="icon-pause hidden" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M5.4 4.8Q5 4.8 5 5.2L5 18.8Q5 19.2 5.4 19.2L9.2 19.2Q9.6 19.2 9.6 18.8L9.6 5.2Q9.6 4.8 9.2 4.8ZM14.8 4.8Q14.4 4.8 14.4 5.2L14.4 18.8Q14.4 19.2 14.8 19.2L18.6 19.2Q19 19.2 19 18.8L19 5.2Q19 4.8 18.6 4.8Z"/></svg>
+          <svg class="icon-play" width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></svg>
+          <svg class="icon-pause hidden" width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z"/></svg>
         </button>
 
         <button type="button" id="qp-next-ayah-btn" class="qp-ctrl-btn aero-player" title="الآية التالية" aria-label="الآية التالية">
@@ -736,7 +699,7 @@ export function renderLayout(props: LayoutProps): string {
         </div>
 
         <a id="qp-download-surah-btn" href="/api/download/haitham-al-dukhin/1" class="qp-lyrics-icon-btn" title="تحميل تلاوة السورة (MP3)" aria-label="تحميل السورة MP3">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20L18 20"/><path d="M12 4V16M12 16L15.5 12.5M12 16L8.5 12.5"/></svg>
         </a>
 
         <button type="button" id="qp-open-fullscreen-trigger" class="qp-lyrics-icon-btn" title="شاشة التلاوة المتزامنة (LyricsFlow View)">
@@ -841,11 +804,11 @@ export function renderLayout(props: LayoutProps): string {
             </button>
 
             <button type="button" id="aml-play-btn" class="playback-control aero-player play-pause" title="تشغيل / إيقاف" aria-label="تشغيل">
-              <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M4 6.8 4 17.2Q4 21 7.31 19.14L18.26 12.98Q20 12 18.26 11.02L7.31 4.86Q4 3 4 6.8Z" />
+              <svg class="icon-play" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+                <path d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z" />
               </svg>
-              <svg class="icon-pause hidden" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M5.4 4.8Q5 4.8 5 5.2L5 18.8Q5 19.2 5.4 19.2L9.2 19.2Q9.6 19.2 9.6 18.8L9.6 5.2Q9.6 4.8 9.2 4.8ZM14.8 4.8Q14.4 4.8 14.4 5.2L14.4 18.8Q14.4 19.2 14.8 19.2L18.6 19.2Q19 19.2 19 18.8L19 5.2Q19 4.8 18.6 4.8Z" />
+              <svg class="icon-pause hidden" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+                <path d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z" />
               </svg>
             </button>
 

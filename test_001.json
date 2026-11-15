@@ -1,0 +1,650 @@
+[
+  {
+    "vocal_start_ms": 0,
+    "has_basmala": false,
+    "confidence": 0.0,
+    "reciter": "haitham-al-dukhin",
+    "audio": "https://api.kalamalah.com/api/haitham-al-dukhin/murattal/001"
+  },
+  {
+    "audio": "https://api.kalamalah.com/api/yasser-al-dossari/murattal/001",
+    "surah": 1,
+    "vocal_start_ms": 232,
+    "ayah1_start_ms": 232,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.23,
+        "end": 3.13
+      },
+      {
+        "start": 3.41,
+        "end": 9.24
+      },
+      {
+        "start": 9.29,
+        "end": 11.98
+      }
+    ],
+    "confidence": 24.51,
+    "reciter": "yasser-al-dossari"
+  },
+  {
+    "audio": "https://api.kalamalah.com/api/maher-al-muaiqly/murattal/001",
+    "surah": 1,
+    "vocal_start_ms": 441,
+    "ayah1_start_ms": 441,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.44,
+        "end": 7.06
+      },
+      {
+        "start": 8.08,
+        "end": 11.98
+      }
+    ],
+    "confidence": 22.04,
+    "reciter": "maher-al-muaiqly"
+  },
+  {
+    "vocal_start_ms": 0,
+    "has_basmala": false,
+    "confidence": 0.0,
+    "reciter": "mishary-rashid-alafasy",
+    "audio": "https://download.quranicaudio.com/quran/mishaari_raashid_al_3afaasee/001.mp3"
+  },
+  {
+    "audio": "https://api.kalamalah.com/api/khalil-al-husary/murattal/001",
+    "surah": 1,
+    "vocal_start_ms": 650,
+    "ayah1_start_ms": 650,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.65,
+        "end": 1.65
+      },
+      {
+        "start": 1.88,
+        "end": 2.44
+      },
+      {
+        "start": 4.13,
+        "end": 4.46
+      },
+      {
+        "start": 6.25,
+        "end": 7.78
+      },
+      {
+        "start": 7.96,
+        "end": 8.34
+      },
+      {
+        "start": 8.41,
+        "end": 10.52
+      },
+      {
+        "start": 11.8,
+        "end": 11.98
+      }
+    ],
+    "confidence": 6.29,
+    "reciter": "khalil-al-husary"
+  },
+  {
+    "audio": "https://api.kalamalah.com/api/siddiq-minshawi/murattal/001",
+    "surah": 1,
+    "vocal_start_ms": 650,
+    "ayah1_start_ms": 650,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.65,
+        "end": 4.02
+      },
+      {
+        "start": 5.62,
+        "end": 9.82
+      },
+      {
+        "start": 11.22,
+        "end": 11.98
+      }
+    ],
+    "confidence": 34.29,
+    "reciter": "siddiq-minshawi"
+  },
+  {
+    "audio": "https://api.kalamalah.com/api/abdul-baset/murattal/001",
+    "surah": 1,
+    "vocal_start_ms": 836,
+    "ayah1_start_ms": 836,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.84,
+        "end": 2.04
+      },
+      {
+        "start": 2.07,
+        "end": 3.0
+      },
+      {
+        "start": 3.07,
+        "end": 3.92
+      },
+      {
+        "start": 5.39,
+        "end": 7.17
+      },
+      {
+        "start": 7.24,
+        "end": 8.89
+      },
+      {
+        "start": 10.61,
+        "end": 11.98
+      }
+    ],
+    "confidence": 12.5,
+    "reciter": "abdul-baset"
+  },
+  {
+    "audio": "https://api.kalamalah.com/api/abdurrahmaan-as-sudais/murattal/001",
+    "surah": 1,
+    "vocal_start_ms": 882,
+    "ayah1_start_ms": 882,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.88,
+        "end": 1.16
+      },
+      {
+        "start": 3.74,
+        "end": 7.17
+      },
+      {
+        "start": 7.73,
+        "end": 10.31
+      },
+      {
+        "start": 10.77,
+        "end": 11.98
+      }
+    ],
+    "confidence": 10.73,
+    "reciter": "abdurrahmaan-as-sudais"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/saud-al-shorim/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 348,
+    "ayah1_start_ms": 348,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.35,
+        "end": 1.3
+      },
+      {
+        "start": 1.56,
+        "end": 2.41
+      },
+      {
+        "start": 3.2,
+        "end": 4.2
+      },
+      {
+        "start": 4.3,
+        "end": 4.83
+      },
+      {
+        "start": 5.83,
+        "end": 7.15
+      },
+      {
+        "start": 7.2,
+        "end": 8.8
+      },
+      {
+        "start": 9.06,
+        "end": 9.43
+      },
+      {
+        "start": 9.52,
+        "end": 10.4
+      },
+      {
+        "start": 10.43,
+        "end": 11.84
+      }
+    ],
+    "confidence": 8.19,
+    "reciter": "saud-al-shuraim"
+  },
+  {
+    "audio": "https://api.kalamalah.com/api/ahmed-al-ajamy/murattal/001",
+    "surah": 1,
+    "vocal_start_ms": 163,
+    "ayah1_start_ms": 163,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.16,
+        "end": 3.11
+      },
+      {
+        "start": 3.41,
+        "end": 5.8
+      },
+      {
+        "start": 6.25,
+        "end": 11.98
+      }
+    ],
+    "confidence": 16.04,
+    "reciter": "ahmed-al-ajamy"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/ali-hozifi/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 441,
+    "ayah1_start_ms": 441,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.44,
+        "end": 6.92
+      },
+      {
+        "start": 7.99,
+        "end": 11.98
+      }
+    ],
+    "confidence": 24.16,
+    "reciter": "al-huzaifi"
+  },
+  {
+    "audio": "https://api.kalamalah.com/api/hani-ar-rifai/murattal/001",
+    "surah": 1,
+    "vocal_start_ms": 1207,
+    "ayah1_start_ms": 1207,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 1.21,
+        "end": 2.23
+      },
+      {
+        "start": 2.28,
+        "end": 2.95
+      },
+      {
+        "start": 3.04,
+        "end": 3.6
+      },
+      {
+        "start": 5.32,
+        "end": 11.98
+      }
+    ],
+    "confidence": 11.21,
+    "reciter": "hani-ar-rifai"
+  },
+  {
+    "vocal_start_ms": 0,
+    "has_basmala": false,
+    "confidence": 0.0,
+    "reciter": "abdul-rashid-sofi",
+    "audio": "https://api.kalamalah.com/api/abdul-rashid-sofi/murattal/001"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/ahmed-neana/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 813,
+    "ayah1_start_ms": 813,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.81,
+        "end": 5.22
+      },
+      {
+        "start": 6.73,
+        "end": 10.66
+      },
+      {
+        "start": 11.82,
+        "end": 11.98
+      }
+    ],
+    "confidence": 42.16,
+    "reciter": "ahmed-neana"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/muhammad-ayyub/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 488,
+    "ayah1_start_ms": 488,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.49,
+        "end": 7.04
+      },
+      {
+        "start": 8.41,
+        "end": 11.98
+      }
+    ],
+    "confidence": 18.15,
+    "reciter": "muhammad-ayyub"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/saad-al-ghamdy/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 348,
+    "ayah1_start_ms": 348,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.35,
+        "end": 1.02
+      },
+      {
+        "start": 1.09,
+        "end": 1.39
+      },
+      {
+        "start": 1.95,
+        "end": 2.23
+      },
+      {
+        "start": 2.53,
+        "end": 3.0
+      },
+      {
+        "start": 4.41,
+        "end": 4.67
+      },
+      {
+        "start": 5.22,
+        "end": 5.48
+      },
+      {
+        "start": 7.15,
+        "end": 11.75
+      }
+    ],
+    "confidence": 3.53,
+    "reciter": "saad-al-ghamdy"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/mahmoud-al-hussary-moalim/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 1277,
+    "ayah1_start_ms": 1277,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 1.28,
+        "end": 3.25
+      },
+      {
+        "start": 3.44,
+        "end": 3.78
+      },
+      {
+        "start": 3.95,
+        "end": 5.64
+      },
+      {
+        "start": 9.98,
+        "end": 11.42
+      },
+      {
+        "start": 11.52,
+        "end": 11.98
+      }
+    ],
+    "confidence": 12.26,
+    "reciter": "mahmoud-al-hussary-moalim"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/mahmoud-ali-al-banna/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 1207,
+    "ayah1_start_ms": 1207,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 1.21,
+        "end": 6.76
+      },
+      {
+        "start": 8.82,
+        "end": 11.98
+      }
+    ],
+    "confidence": 47.08,
+    "reciter": "mahmoud-ali-al-banna"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/zaki-daghistani/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 557,
+    "ayah1_start_ms": 557,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.56,
+        "end": 11.49
+      }
+    ],
+    "confidence": 10.96,
+    "reciter": "zaki-daghistani"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/ahmed-aissa-el-masarawi/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 302,
+    "ayah1_start_ms": 302,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.3,
+        "end": 1.9
+      },
+      {
+        "start": 2.35,
+        "end": 3.74
+      },
+      {
+        "start": 4.67,
+        "end": 7.55
+      },
+      {
+        "start": 8.13,
+        "end": 8.38
+      },
+      {
+        "start": 8.41,
+        "end": 11.7
+      }
+    ],
+    "confidence": 19.14,
+    "reciter": "ahmed-aissa-el-masarawi"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/mahmoud-abdel-hakam/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 348,
+    "ayah1_start_ms": 348,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.35,
+        "end": 1.86
+      },
+      {
+        "start": 1.95,
+        "end": 4.44
+      },
+      {
+        "start": 6.55,
+        "end": 7.87
+      },
+      {
+        "start": 7.96,
+        "end": 9.08
+      },
+      {
+        "start": 9.13,
+        "end": 10.94
+      }
+    ],
+    "confidence": 14.59,
+    "reciter": "mahmoud-abdel-hakam"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/yassin-aljazairi/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 2206,
+    "ayah1_start_ms": 2206,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 2.21,
+        "end": 6.71
+      },
+      {
+        "start": 8.24,
+        "end": 11.84
+      }
+    ],
+    "confidence": 19.61,
+    "reciter": "yassin-aljazairi"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/omar-al-kazabri/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 766,
+    "ayah1_start_ms": 766,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.77,
+        "end": 2.39
+      },
+      {
+        "start": 2.53,
+        "end": 2.79
+      },
+      {
+        "start": 2.88,
+        "end": 5.57
+      },
+      {
+        "start": 6.8,
+        "end": 8.01
+      },
+      {
+        "start": 8.13,
+        "end": 9.06
+      },
+      {
+        "start": 9.1,
+        "end": 10.91
+      }
+    ],
+    "confidence": 6.15,
+    "reciter": "omar-al-kazabri"
+  },
+  {
+    "vocal_start_ms": 0,
+    "has_basmala": false,
+    "confidence": 0.0,
+    "reciter": "turki-ebeid-al-marri",
+    "audio": "https://cdn.islam-online.net/data/full/turki-ebeid-al-marri/001.mp3"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/kanakeri/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 836,
+    "ayah1_start_ms": 836,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.84,
+        "end": 5.43
+      },
+      {
+        "start": 6.8,
+        "end": 10.8
+      }
+    ],
+    "confidence": 11.59,
+    "reciter": "kanakeri"
+  },
+  {
+    "audio": "https://cdn.islam-online.net/data/full/bishr-lotfy/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 348,
+    "ayah1_start_ms": 348,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.35,
+        "end": 11.98
+      }
+    ],
+    "confidence": 29.8,
+    "reciter": "bishr-lotfy"
+  },
+  {
+    "audio": "https://server11.mp3quran.net/shatri/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 1254,
+    "ayah1_start_ms": 1254,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 1.25,
+        "end": 7.55
+      },
+      {
+        "start": 8.57,
+        "end": 11.98
+      }
+    ],
+    "confidence": 11.94,
+    "reciter": "abu-bakr-al-shatri"
+  },
+  {
+    "audio": "https://server12.mp3quran.net/tnjy/001.mp3",
+    "surah": 1,
+    "vocal_start_ms": 325,
+    "ayah1_start_ms": 325,
+    "has_basmala": false,
+    "detected_intervals_sec": [
+      {
+        "start": 0.33,
+        "end": 5.92
+      },
+      {
+        "start": 6.8,
+        "end": 9.47
+      },
+      {
+        "start": 9.5,
+        "end": 11.63
+      }
+    ],
+    "confidence": 9.3,
+    "reciter": "khalifah-al-tunaiji"
+  }
+]

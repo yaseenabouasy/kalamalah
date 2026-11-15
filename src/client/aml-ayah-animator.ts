@@ -675,23 +675,34 @@ export class AmlAyahAnimator {
         for (const uw of line.uniqueWords) {
           let bestProg = 0;
           let bestElapsed = 0;
-          for (const seg of uw.segments) {
-            const wDur = Math.max(60, seg.endMs - seg.startMs);
-            const p = Math.max(0, Math.min(1, (currentTimeMs - seg.startMs) / wDur));
-            const elap = currentTimeMs - seg.startMs;
-            if ((p > 0 && p < 1) || (bestProg === 0 && p > 0)) {
-              bestProg = p;
-              bestElapsed = elap;
+
+          // Find the active segment for this word (handles reciter repeating words/phrases)
+          let matchedSeg = uw.segments.find((s) => currentTimeMs >= s.startMs && currentTimeMs <= s.endMs);
+          if (!matchedSeg && uw.segments.length > 0) {
+            if (uw.segments.every((s) => currentTimeMs >= s.endMs)) {
+              matchedSeg = uw.segments[uw.segments.length - 1];
+            } else {
+              // Either before first segment, or in a rollback gap before a repeated pass
+              matchedSeg = undefined;
             }
           }
+
+          if (matchedSeg) {
+            const headstartMs = 45;
+            const wDur = Math.max(60, matchedSeg.endMs - matchedSeg.startMs);
+            bestProg = Math.max(0, Math.min(1, (currentTimeMs - (matchedSeg.startMs - headstartMs)) / wDur));
+            bestElapsed = Math.max(0, currentTimeMs - (matchedSeg.startMs - headstartMs));
+          }
+
           if (bestProg > 0 && uw.wordOffsetTop >= 0) {
             activeWordOffsetTop = uw.wordOffsetTop;
           }
 
-          if (Math.abs(uw.lastProg - bestProg) > 0.004 || (bestProg > 0 && bestElapsed < wordRiseDurationMs)) {
+          const isRising = bestProg > 0 && bestElapsed < wordRiseDurationMs;
+          if (Math.abs(uw.lastProg - bestProg) > 0.004 || isRising) {
             uw.lastProg = bestProg;
             const gp = -20 + 120 * bestProg;
-            const riseY = wordRiseOffset(bestElapsed);
+            const riseY = bestProg >= 1 && !isRising ? 0 : wordRiseOffset(bestElapsed);
             const isSpeaking = bestProg > 0 && bestProg < 1;
             const isSpoken = bestProg >= 1;
             if (uw.el) {

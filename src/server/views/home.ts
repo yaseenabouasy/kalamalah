@@ -111,7 +111,7 @@ export function renderHomePage(): string {
       </div>
     </section>
 
-    <!-- Islamic Knowledge & Ecosystem Cards (Duas, 99 Names, AI Chatbot, Developer Story) -->
+    <!-- Islamic Knowledge & Ecosystem Cards (Duas & 99 Names) -->
     <section class="tools-showcase container" aria-label="أدوات وموسوعات كلام الله">
       <div class="tools-grid">
         <article class="tool-feature-card">
@@ -124,12 +124,6 @@ export function renderHomePage(): string {
           <h2>أسماء الله الحسنى (٩٩ اسماً)</h2>
           <p>استعرض أسماء الله الحسنى التسعة والتسعين بالخط القرآني مع شرح معانيها الجليلة باللغتين العربية والإنجليزية.</p>
           <a href="/names" class="btn-primary-gold sm">استعراض الأسماء الحسنى</a>
-        </article>
-
-        <article class="tool-feature-card">
-          <h2>المساعد القرآني الذكي (Kalamalah AI)</h2>
-          <p>اسأل الذكاء الاصطناعي عن معاني الآيات، السور، أحكام التجويد، والأدعية المناسبة لكل حال.</p>
-          <a href="/ai" class="btn-primary-gold sm">فتح المساعد الذكي</a>
         </article>
       </div>
     </section>

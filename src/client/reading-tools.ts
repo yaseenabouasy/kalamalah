@@ -144,6 +144,8 @@ export function filterWordDiacritics(rawWord: string, preset: TashkeelPreset): s
   return rawWord;
 }
 
+let readingToolsGlobalBound = false;
+
 export function initReadingTools(): void {
   let tajweedEnabled = false;
   let currentTajweedSchema: TajweedSchema = 'printed';
@@ -179,13 +181,15 @@ export function initReadingTools(): void {
   }
 
   // Click to reveal hidden word in Memorization Mode
-  document.addEventListener('click', (e) => {
-    const target = (e.target as HTMLElement | null)?.closest<HTMLElement>('.quran-word.memo-hidden-word');
-    if (target) {
-      e.stopPropagation();
-      target.classList.toggle('memo-revealed-word');
-    }
-  });
+  if (!readingToolsGlobalBound) {
+    document.addEventListener('click', (e) => {
+      const target = (e.target as HTMLElement | null)?.closest<HTMLElement>('.quran-word.memo-hidden-word');
+      if (target) {
+        e.stopPropagation();
+        target.classList.toggle('memo-revealed-word');
+      }
+    });
+  }
 
   // 0. Collapsible Reading Toolbar Section
   const toolbarSection = document.getElementById('reading-toolbar-section');
@@ -442,35 +446,43 @@ function initBookmarksAndTracker(): void {
   const surahNameEn = wrapper?.getAttribute('data-surah-name-en') || '';
 
   // Copy & Bookmark buttons on Ayah cards
-  document.addEventListener('click', (e) => {
-    const copyBtn = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-copy-ayah]');
-    if (copyBtn) {
-      const ayahNum = copyBtn.getAttribute('data-copy-ayah');
-      const card = document.getElementById(`ayah-${ayahNum}`);
-      const text = card?.getAttribute('data-raw-arabic') || '';
-      if (text) {
-        navigator.clipboard?.writeText(`${text} ﴿سورة ${surahNameAr}: ${ayahNum}﴾`);
-        const span = copyBtn.querySelector('span');
-        if (span) {
-          const prev = span.textContent;
-          span.textContent = 'تم النسخ';
-          setTimeout(() => {
-            span.textContent = prev;
-          }, 1600);
+  if (!readingToolsGlobalBound) {
+    readingToolsGlobalBound = true;
+    document.addEventListener('click', (e) => {
+      const copyBtn = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-copy-ayah]');
+      if (copyBtn) {
+        const w = document.getElementById('surah-ayahs-wrapper');
+        const sNameAr = w?.getAttribute('data-surah-name-ar') || '';
+        const ayahNum = copyBtn.getAttribute('data-copy-ayah');
+        const card = document.getElementById(`ayah-${ayahNum}`);
+        const text = card?.getAttribute('data-raw-arabic') || '';
+        if (text) {
+          navigator.clipboard?.writeText(`${text} ﴿سورة ${sNameAr}: ${ayahNum}﴾`);
+          const span = copyBtn.querySelector('span');
+          if (span) {
+            const prev = span.textContent;
+            span.textContent = 'تم النسخ';
+            setTimeout(() => {
+              span.textContent = prev;
+            }, 1600);
+          }
         }
+        return;
       }
-      return;
-    }
 
-    const bmBtn = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-bookmark-ayah]');
-    if (bmBtn && surahNum > 0) {
-      const ayahNum = Number(bmBtn.getAttribute('data-bookmark-ayah') || 1);
-      const card = document.getElementById(`ayah-${ayahNum}`);
-      const text = card?.getAttribute('data-raw-arabic') || '';
-      const isAdded = toggleBookmarkAyah(surahNum, surahNameAr, ayahNum, text);
-      bmBtn.classList.toggle('active', isAdded);
-    }
-  });
+      const bmBtn = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-bookmark-ayah]');
+      const w = document.getElementById('surah-ayahs-wrapper');
+      const sNum = Number(w?.getAttribute('data-surah-number') || 0);
+      const sNameAr = w?.getAttribute('data-surah-name-ar') || '';
+      if (bmBtn && sNum > 0) {
+        const ayahNum = Number(bmBtn.getAttribute('data-bookmark-ayah') || 1);
+        const card = document.getElementById(`ayah-${ayahNum}`);
+        const text = card?.getAttribute('data-raw-arabic') || '';
+        const isAdded = toggleBookmarkAyah(sNum, sNameAr, ayahNum, text);
+        bmBtn.classList.toggle('active', isAdded);
+      }
+    });
+  }
 
   // Reading Tracker banner restoration
   const trackerEl = document.getElementById('reading-tracker');

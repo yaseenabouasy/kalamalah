@@ -1,5 +1,4 @@
 import gsap from 'gsap';
-import { formatAiResponseToHtml, initFloatingAiWidget } from './ai-widget';
 import { applyUiLocale, escapeHtml, getActiveLocale, isRtlLocale, type UiLocale } from './i18n';
 import { QuranPlayerController, type BootstrapCatalog } from './quran-player';
 import { initReadingTools } from './reading-tools';
@@ -10,9 +9,13 @@ import {
   fetchTafseerAyahApi,
   getDownloadUrl,
   isStaticMode,
-  postAiChatApi,
 } from './static-api';
 import { resolveStaticRouteIfNeeded } from './static-router';
+import { initSleepTimer } from './sleep-timer';
+import { initChangelogModal } from './changelog-modal';
+import { initAmbientMixer } from './ambient-mixer';
+import { initHifzTools } from './hifz-tools';
+import { initDualScreenMode } from './tv-display';
 
 function parseBootstrapCatalog(): BootstrapCatalog {
   try {
@@ -835,83 +838,6 @@ function initScrollToTopAndIslamicPages(): void {
       });
     });
   }
-
-  // 4. Kalamalah AI Assistant (/ai) connected to n8n Webhook
-  const aiForm = document.getElementById('ai-chat-form') as HTMLFormElement | null;
-  const aiInput = document.getElementById('ai-chat-input') as HTMLInputElement | null;
-  const aiViewport = document.getElementById('ai-messages-viewport');
-  if (aiForm && aiInput && aiViewport) {
-    const AI_SESSION_KEY = 'kalamalah_ai_session_id';
-    let sessionId = sessionStorage.getItem(AI_SESSION_KEY);
-    if (!sessionId) {
-      sessionId = `klm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      sessionStorage.setItem(AI_SESSION_KEY, sessionId);
-    }
-
-    const appendBubble = (role: 'user' | 'assistant', text: string) => {
-      const row = document.createElement('div');
-      row.className = `ai-msg-row ${role}`;
-      const bubble = document.createElement('div');
-      bubble.className = 'ai-msg-bubble';
-
-      if (role === 'assistant') {
-        bubble.appendChild(formatAiResponseToHtml(text));
-      } else {
-        const p = document.createElement('p');
-        p.textContent = text;
-        bubble.appendChild(p);
-      }
-
-      row.appendChild(bubble);
-      aiViewport.appendChild(row);
-      aiViewport.scrollTop = aiViewport.scrollHeight;
-      return row;
-    };
-
-    const sendQuestion = async (questionText: string) => {
-      const trimmed = questionText.trim();
-      if (!trimmed) return;
-      aiInput.value = '';
-      appendBubble('user', trimmed);
-
-      const loadingRow = appendBubble('assistant', 'جاري البحث والتدبر...');
-      loadingRow.classList.add('is-loading');
-
-      try {
-        const data = await postAiChatApi(trimmed, sessionId || 'kalamalah-web-session');
-        loadingRow.remove();
-        appendBubble(
-          'assistant',
-          data?.reply || 'بارك الله فيك، لم أتمكن من استخراج الإجابة حالياً.'
-        );
-      } catch {
-        loadingRow.remove();
-        appendBubble('assistant', 'تعذر الاتصال بالمساعد الذكي حالياً، يرجى المحاولة مرة أخرى.');
-      }
-    };
-
-    aiForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      sendQuestion(aiInput.value);
-    });
-
-    document.querySelectorAll<HTMLElement>('[data-ai-prompt]').forEach((chip) => {
-      chip.addEventListener('click', () => {
-        const prompt = chip.getAttribute('data-ai-prompt') || '';
-        if (prompt) sendQuestion(prompt);
-      });
-    });
-
-    document.getElementById('ai-clear-chat-btn')?.addEventListener('click', () => {
-      sessionId = `klm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      sessionStorage.setItem(AI_SESSION_KEY, sessionId);
-      aiViewport.innerHTML = `<div class="ai-msg-row assistant">
-        <div class="ai-msg-bubble">
-          <p>تم بدء محادثة جديدة. كيف يمكنني مساعدتك في القرآن الكريم أو التفسير أو الأدعية؟</p>
-        </div>
-      </div>`;
-    });
-  }
 }
 
 function initMobileDrawerNavigation(): void {
@@ -1013,8 +939,8 @@ function initCookieConsentBanner(): void {
     const essBtn = document.getElementById('cookie-essential-btn');
     if (textEl) {
       textEl.textContent = isRtl
-        ? 'نستخدم تخزين المتصفح المحلي لحفظ المظهر، اللغة، العلامات المرجعية، موضع القراءة، وسجل محادثات الذكاء الاصطناعي.'
-        : 'We use browser storage for your theme, language, bookmarks, reading position, and AI chat history.';
+        ? 'نستخدم تخزين المتصفح المحلي لحفظ المظهر، اللغة، العلامات المرجعية، وموضع القراءة.'
+        : 'We use browser storage for your theme, language, bookmarks, and reading position.';
     }
     if (acceptBtn) acceptBtn.textContent = isRtl ? 'موافق' : 'Accept';
     if (essBtn) essBtn.textContent = isRtl ? 'الأساسية فقط' : 'Essential Only';
@@ -1037,40 +963,255 @@ function initCookieConsentBanner(): void {
   document.getElementById('cookie-essential-btn')?.addEventListener('click', () => dismiss('essential'));
 }
 
+function rewriteStaticDownloadLinks(catalog: BootstrapCatalog): void {
+  if (!isStaticMode()) return;
+  document.querySelectorAll<HTMLAnchorElement>('a[href^="/api/download/"]').forEach((link) => {
+    const m = /^\/api\/download\/([^/]+)\/(\d+)/.exec(link.getAttribute('href') || '');
+    if (!m) return;
+    const rec = catalog.reciters.find((r) => r.slug === decodeURIComponent(m[1]!));
+    if (rec) {
+      link.href = getDownloadUrl(rec, Number(m[2]));
+      link.setAttribute('download', '');
+    }
+  });
+}
+
+function initSoftSpaNavigation(
+  catalog: BootstrapCatalog,
+  player: QuranPlayerController,
+  onPageSwapped: () => void
+): void {
+  let navAbort: AbortController | null = null;
+
+  const syncNavActiveState = (doc: Document) => {
+    const nextLinks = Array.from(doc.querySelectorAll<HTMLAnchorElement>('.primary-nav .nav-pill'));
+    const curLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('.primary-nav .nav-pill'));
+    curLinks.forEach((cur, idx) => {
+      const next = nextLinks[idx];
+      if (next) cur.classList.toggle('active', next.classList.contains('active'));
+    });
+    const nextMob = Array.from(doc.querySelectorAll<HTMLAnchorElement>('.mobile-nav-link'));
+    const curMob = Array.from(document.querySelectorAll<HTMLAnchorElement>('.mobile-nav-link'));
+    curMob.forEach((cur, idx) => {
+      const next = nextMob[idx];
+      if (next) cur.classList.toggle('active', next.classList.contains('active'));
+    });
+  };
+
+  const navigateTo = async (urlStr: string, pushHistory = true) => {
+    const targetUrl = new URL(urlStr, window.location.origin);
+    if (targetUrl.origin !== window.location.origin) {
+      window.location.href = targetUrl.href;
+      return;
+    }
+
+    if (navAbort) navAbort.abort();
+    navAbort = new AbortController();
+
+    const mainEl = document.getElementById('main-content');
+    if (!mainEl) {
+      window.location.href = targetUrl.href;
+      return;
+    }
+
+    try {
+      const res = await fetch(targetUrl.pathname + targetUrl.search, {
+        signal: navAbort.signal,
+        headers: { 'X-Requested-With': 'kalamalah-spa' },
+      });
+      if (!res.ok) {
+        if (isStaticMode()) {
+          if (pushHistory) history.pushState({ url: targetUrl.href }, '', targetUrl.href);
+          mainEl.innerHTML = `<div id="static-route-placeholder" class="container" style="padding:64px 16px;text-align:center;"><p style="color:var(--text-secondary);font-size:1rem;">Loading...</p></div>`;
+          await resolveStaticRouteIfNeeded(catalog);
+          onPageSwapped();
+          player.rebindAnimator();
+          window.scrollTo({ top: 0, behavior: 'auto' });
+          return;
+        }
+        window.location.href = targetUrl.href;
+        return;
+      }
+
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const nextMain = doc.getElementById('main-content');
+      if (!nextMain) {
+        window.location.href = targetUrl.href;
+        return;
+      }
+
+      if (pushHistory) {
+        history.pushState({ url: targetUrl.href }, '', targetUrl.href);
+      }
+
+      document.title = doc.title || document.title;
+      mainEl.innerHTML = nextMain.innerHTML;
+
+      try {
+        const bootEl = doc.getElementById('kalamalah-bootstrap');
+        if (bootEl?.textContent) {
+          const parsed = JSON.parse(bootEl.textContent) as BootstrapCatalog;
+          catalog.pageData = parsed.pageData ?? {};
+        }
+      } catch {}
+
+      syncNavActiveState(doc);
+      await resolveStaticRouteIfNeeded(catalog);
+      onPageSwapped();
+      player.rebindAnimator();
+
+      if (targetUrl.hash) {
+        const hashTarget = document.getElementById(targetUrl.hash.slice(1));
+        if (hashTarget) {
+          hashTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+      }
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      window.location.href = targetUrl.href;
+    }
+  };
+
+  document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+      return;
+    }
+    const anchor = (e.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href]');
+    if (!anchor) return;
+    if (
+      anchor.target === '_blank' ||
+      anchor.hasAttribute('download') ||
+      anchor.getAttribute('href')?.startsWith('/api/download/') ||
+      anchor.getAttribute('href')?.startsWith('mailto:') ||
+      anchor.getAttribute('href')?.startsWith('tel:')
+    ) {
+      return;
+    }
+    const href = anchor.getAttribute('href') || '';
+    if (!href || href.startsWith('#')) return;
+    const url = new URL(anchor.href, window.location.origin);
+    if (url.origin !== window.location.origin) return;
+
+    e.preventDefault();
+    navigateTo(url.href, true);
+  });
+
+  window.addEventListener('popstate', () => {
+    navigateTo(window.location.href, false);
+  });
+}
+
+function initKeyboardShortcuts(player: QuranPlayerController): void {
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target as HTMLElement | null)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement | null)?.isContentEditable) {
+      return;
+    }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    switch (e.code) {
+      case 'Space':
+        e.preventDefault();
+        document.getElementById('qp-play-btn')?.click();
+        break;
+      case 'KeyJ':
+        e.preventDefault();
+        document.getElementById('qp-next-ayah-btn')?.click();
+        break;
+      case 'KeyK':
+        e.preventDefault();
+        document.getElementById('qp-prev-ayah-btn')?.click();
+        break;
+      case 'KeyR':
+        e.preventDefault();
+        document.getElementById('qp-repeat-btn')?.click();
+        break;
+      case 'KeyM':
+        e.preventDefault();
+        document.getElementById('qp-mute-btn')?.click();
+        break;
+      case 'KeyF':
+        e.preventDefault();
+        document.getElementById('qp-fullscreen-btn')?.click();
+        break;
+    }
+  });
+}
+
+function applyDeepLinkParams(player: QuranPlayerController): void {
+  const params = new URLSearchParams(window.location.search);
+  const reciter = params.get('reciter');
+  const ayahStr = params.get('ayah');
+  const tStr = params.get('t');
+  if (reciter) player.setReciter(reciter, false);
+  if (ayahStr) {
+    const ayahNum = Number(ayahStr);
+    if (Number.isFinite(ayahNum) && ayahNum > 0) {
+      setTimeout(() => {
+        document.querySelector<HTMLElement>(`[data-ayah="${ayahNum}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }
+  if (tStr) {
+    const tSec = Number(tStr);
+    const audio = document.getElementById('kalamalah-audio-el') as HTMLAudioElement | null;
+    if (audio && Number.isFinite(tSec) && tSec >= 0) {
+      audio.currentTime = tSec;
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const catalog = parseBootstrapCatalog();
   initThemeController();
   initMobileDrawerNavigation();
-  initFloatingAiWidget();
   initCookieConsentBanner();
 
   await resolveStaticRouteIfNeeded(catalog);
-
-  // In static hosting (e.g. GitHub Pages), rewrite SSR /api/download/ links to direct MP3 URLs
-  if (isStaticMode()) {
-    document.querySelectorAll<HTMLAnchorElement>('a[href^="/api/download/"]').forEach((link) => {
-      const m = /^\/api\/download\/([^/]+)\/(\d+)/.exec(link.getAttribute('href') || '');
-      if (!m) return;
-      const rec = catalog.reciters.find((r) => r.slug === decodeURIComponent(m[1]!));
-      if (rec) {
-        link.href = getDownloadUrl(rec, Number(m[2]));
-        link.setAttribute('download', '');
-      }
-    });
-  }
+  rewriteStaticDownloadLinks(catalog);
 
   let syncReciterHook: ((slug: string) => void) | undefined;
   const player = new QuranPlayerController(catalog, (slug) => {
     syncReciterHook?.(slug);
   });
 
-  const { syncReciterDropdowns } = initSearchableDropdowns(catalog, player);
-  syncReciterHook = syncReciterDropdowns;
+  const reinitPageContent = () => {
+    rewriteStaticDownloadLinks(catalog);
+    const { syncReciterDropdowns } = initSearchableDropdowns(catalog, player);
+    syncReciterHook = syncReciterDropdowns;
+    initReadingTools();
+    initHomeTabsAndFilters();
+    initScrollToTopAndIslamicPages();
+    initReciterBioFromApi();
+    applyUiLocale(getActiveLocale(), catalog);
+  };
 
-  initReadingTools();
+  reinitPageContent();
   initWordMeaningPopover(player);
-  initHomeTabsAndFilters();
   initModalsAndTafseer(catalog);
-  initScrollToTopAndIslamicPages();
-  initReciterBioFromApi();
+  initSoftSpaNavigation(catalog, player, reinitPageContent);
+  try {
+    if (localStorage.getItem('kalamalah_gpu_only_animations') === '1') {
+      document.documentElement.setAttribute('data-gpu-only', '1');
+    }
+  } catch {}
+  (window as any).__KALAMALAH_SET_GPU_ONLY__ = (enabled: boolean) => {
+    document.documentElement.toggleAttribute('data-gpu-only', enabled);
+    try {
+      localStorage.setItem('kalamalah_gpu_only_animations', enabled ? '1' : '0');
+    } catch {}
+  };
+  if ('serviceWorker' in navigator) {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+  initSleepTimer();
+  initChangelogModal();
+  initAmbientMixer();
+  initHifzTools();
+  initDualScreenMode();
+  initKeyboardShortcuts(player);
+  applyDeepLinkParams(player);
 });

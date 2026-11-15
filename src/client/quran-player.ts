@@ -76,7 +76,22 @@ export class QuranPlayerController {
   private currentAyahsData: { n: number; text: string; tr?: string; taf?: string }[] = [];
 
   private activeAyahNumber = 1;
-  private syncOffsetMs = 0;
+  private userManualOffsetMs = 0;
+  private systemTimingOffsetMs = 0;
+
+  private get effectiveSyncOffsetMs(): number {
+    return this.userManualOffsetMs + this.systemTimingOffsetMs;
+  }
+
+  private computeSystemTimingOffset(reciterSlug: string, surahNumber: number): number {
+    const slug = (reciterSlug || '').toLowerCase();
+    if (slug.includes('dosari') || slug.includes('dousari') || slug.includes('dussary') || slug.includes('yasser')) {
+      if (surahNumber === 2 || surahNumber === 3 || surahNumber === 5) return 3400;
+      if (surahNumber === 4) return 2600;
+      return 3100;
+    }
+    return 0;
+  }
   private repeatMode: 'off' | 'surah' | 'ayah' = 'off';
   private speeds = [0.75, 1, 1.25, 1.5, 2];
   private speedIndex = 1;
@@ -111,6 +126,7 @@ export class QuranPlayerController {
   private wakeLockSentinel: any = null;
   private lastMediaPositionUpdateMs = 0;
   private pendingRestoreTimeSec = 0;
+  private pendingSeekTimeSec = -1;
   private lastSavedPlaybackMs = 0;
   private static readonly PLAYBACK_STORAGE_KEY = 'kalamalah_last_playback_v1';
 
@@ -218,17 +234,15 @@ export class QuranPlayerController {
   public async setReciter(reciterSlug: string, autoPlay = false): Promise<void> {
     if (!reciterSlug) return;
     const wasPlaying = !this.audioEl.paused;
-    const resumeSec = this.audioEl.currentTime || this.pendingRestoreTimeSec || 0;
+    const resumeAyah = this.activeAyahNumber > 1 ? this.activeAyahNumber : undefined;
+    this.pendingRestoreTimeSec = 0;
     this.currentReciterSlug = reciterSlug;
     try {
       localStorage.setItem('kalamalah_reciter_slug', reciterSlug);
     } catch {}
-    if (resumeSec > 1) {
-      this.pendingRestoreTimeSec = resumeSec;
-    }
-    this.savePlaybackState(true);
+    this.savePlaybackState(true, this.currentSurahNumber, reciterSlug, resumeAyah || 1, 0);
     this.onReciterExternalChange?.(reciterSlug);
-    await this.loadTrackMetadata(this.currentSurahNumber, reciterSlug, autoPlay || wasPlaying);
+    await this.loadTrackMetadata(this.currentSurahNumber, reciterSlug, autoPlay || wasPlaying, resumeAyah);
   }
 
   public async playSurah(surahNumber: number, reciterSlug?: string, startAyah?: number): Promise<void> {
@@ -279,7 +293,7 @@ export class QuranPlayerController {
     }
     const seg = this.currentTimings?.ayahs.find((a) => a.ayah === ayahNumber);
     if (seg) {
-      this.audioEl.currentTime = Math.max(0, (seg.startMs - this.syncOffsetMs) / 1000);
+      this.audioEl.currentTime = Math.max(0, (seg.startMs - this.effectiveSyncOffsetMs) / 1000);
       this.startSyncLoop();
       if (autoPlay && this.audioEl.paused) {
         this.audioEl.play().catch(() => {});
@@ -372,6 +386,7 @@ export class QuranPlayerController {
     }
 
     this.renderFullscreenAyahsList();
+    this.systemTimingOffsetMs = this.computeSystemTimingOffset(this.currentReciterSlug, surahNumber);
 
     const fsListEl = document.getElementById('aml-ayahs-list');
     const readerWrapEl =
@@ -384,8 +399,19 @@ export class QuranPlayerController {
     if (startAyah && startAyah > 1) {
       const targetSeg = timingsRes?.ayahs.find((a) => a.ayah === startAyah);
       if (targetSeg) {
-        this.audioEl.currentTime = Math.max(0, (targetSeg.startMs - this.syncOffsetMs) / 1000);
+        const targetSec = Math.max(0, (targetSeg.startMs - this.effectiveSyncOffsetMs) / 1000);
+        this.pendingSeekTimeSec = targetSec;
+        if (this.audioEl.readyState >= 1) {
+          this.audioEl.currentTime = targetSec;
+          this.pendingSeekTimeSec = -1;
+        }
+        this.animator.animate(targetSeg.startMs, 0);
+        this.animator.forceAlignActiveLine();
+      } else {
+        this.pendingSeekTimeSec = -1;
       }
+    } else {
+      this.pendingSeekTimeSec = -1;
     }
 
     if (autoPlay) {
@@ -715,7 +741,7 @@ export class QuranPlayerController {
 
       const currentTimeSec = this.audioEl.currentTime || 0;
       const durationSec = this.audioEl.duration || 0;
-      const effectiveTimeMs = currentTimeSec * 1000 + this.syncOffsetMs;
+      const effectiveTimeMs = currentTimeSec * 1000 + this.effectiveSyncOffsetMs;
 
       if (durationSec > 0) {
         const pct = Math.max(0, Math.min(100, (currentTimeSec / durationSec) * 100));
@@ -737,7 +763,7 @@ export class QuranPlayerController {
       if (this.repeatMode === 'ayah' && this.currentTimings) {
         const activeSeg = this.currentTimings.ayahs.find((a) => a.ayah === this.activeAyahNumber);
         if (activeSeg && effectiveTimeMs >= activeSeg.endMs) {
-          this.audioEl.currentTime = Math.max(0, (activeSeg.startMs - this.syncOffsetMs) / 1000);
+          this.audioEl.currentTime = Math.max(0, (activeSeg.startMs - this.effectiveSyncOffsetMs) / 1000);
         }
       }
 
@@ -776,6 +802,12 @@ export class QuranPlayerController {
     };
 
     this.rafId = requestAnimationFrame(step);
+  }
+
+  private setAudioLoading(isLoading: boolean): void {
+    document.querySelectorAll('#qp-play-toggle-btn, #aml-play-btn, #hero-play-btn').forEach((btn) => {
+      btn.classList.toggle('is-loading', isLoading);
+    });
   }
 
   private updatePlayPauseIcons(isPlaying: boolean): void {
@@ -934,11 +966,26 @@ export class QuranPlayerController {
       this.savePlaybackState(true);
     });
 
+    this.audioEl.addEventListener('loadstart', () => this.setAudioLoading(true));
+    this.audioEl.addEventListener('waiting', () => this.setAudioLoading(true));
+    this.audioEl.addEventListener('canplay', () => this.setAudioLoading(false));
+    this.audioEl.addEventListener('playing', () => this.setAudioLoading(false));
+    this.audioEl.addEventListener('pause', () => this.setAudioLoading(false));
+    this.audioEl.addEventListener('ended', () => this.setAudioLoading(false));
+    this.audioEl.addEventListener('error', () => this.setAudioLoading(false));
+
     this.audioEl.addEventListener('loadedmetadata', () => {
       const dur = this.audioEl.duration || 0;
-      if (this.pendingRestoreTimeSec > 0 && Number.isFinite(dur) && dur > 1) {
-        const target = Math.min(this.pendingRestoreTimeSec, Math.max(0, dur - 1));
+      const seekTarget =
+        this.pendingSeekTimeSec >= 0
+          ? this.pendingSeekTimeSec
+          : this.pendingRestoreTimeSec > 0
+            ? this.pendingRestoreTimeSec
+            : -1;
+      if (seekTarget >= 0 && Number.isFinite(dur) && dur > 1) {
+        const target = Math.min(seekTarget, Math.max(0, dur - 1));
         this.audioEl.currentTime = target;
+        this.pendingSeekTimeSec = -1;
         this.pendingRestoreTimeSec = 0;
         const pct = Math.max(0, Math.min(100, (target / dur) * 100));
         const barFill = document.getElementById('qp-bar-progress-fill');
@@ -949,7 +996,8 @@ export class QuranPlayerController {
         const amlCurEl = document.getElementById('aml-current-time');
         if (curTimeEl) curTimeEl.textContent = formatTimeSec(target);
         if (amlCurEl) amlCurEl.textContent = formatTimeSec(target);
-        this.animator.animate(target * 1000 + this.syncOffsetMs, 0);
+        this.animator.animate(target * 1000 + this.effectiveSyncOffsetMs, 0);
+        this.animator.forceAlignActiveLine();
       }
       const curSec = this.audioEl.currentTime || 0;
       const totEl = document.getElementById('qp-total-duration');
@@ -982,11 +1030,11 @@ export class QuranPlayerController {
         this.updateMediaSessionPositionState();
       }
       if (document.hidden && this.currentTimings) {
-        const effectiveTimeMs = (this.audioEl.currentTime || 0) * 1000 + this.syncOffsetMs;
+        const effectiveTimeMs = (this.audioEl.currentTime || 0) * 1000 + this.effectiveSyncOffsetMs;
         if (this.repeatMode === 'ayah') {
           const activeSeg = this.currentTimings.ayahs.find((a) => a.ayah === this.activeAyahNumber);
           if (activeSeg && effectiveTimeMs >= activeSeg.endMs) {
-            this.audioEl.currentTime = Math.max(0, (activeSeg.startMs - this.syncOffsetMs) / 1000);
+            this.audioEl.currentTime = Math.max(0, (activeSeg.startMs - this.effectiveSyncOffsetMs) / 1000);
             return;
           }
         }
@@ -1101,20 +1149,20 @@ export class QuranPlayerController {
     const updateOffsetLabel = () => {
       const lbl = document.getElementById('aml-sync-offset-label');
       if (lbl) {
-        const sign = this.syncOffsetMs > 0 ? '+' : '';
-        lbl.textContent = `${sign}${this.syncOffsetMs}ms`;
+        const sign = this.userManualOffsetMs > 0 ? '+' : '';
+        lbl.textContent = `${sign}${this.userManualOffsetMs}ms`;
       }
     };
     document.getElementById('aml-sync-minus-btn')?.addEventListener('click', () => {
-      this.syncOffsetMs -= 100;
+      this.userManualOffsetMs -= 100;
       updateOffsetLabel();
     });
     document.getElementById('aml-sync-plus-btn')?.addEventListener('click', () => {
-      this.syncOffsetMs += 100;
+      this.userManualOffsetMs += 100;
       updateOffsetLabel();
     });
     document.getElementById('aml-sync-offset-label')?.addEventListener('click', () => {
-      this.syncOffsetMs = 0;
+      this.userManualOffsetMs = 0;
       updateOffsetLabel();
     });
 
@@ -1235,14 +1283,14 @@ export class QuranPlayerController {
       if (wordEl) {
         e.stopPropagation();
         const ms = Number(wordEl.getAttribute('data-seek-ms') || 0);
-        this.audioEl.currentTime = Math.max(0, (ms - this.syncOffsetMs) / 1000);
+        this.audioEl.currentTime = Math.max(0, (ms - this.effectiveSyncOffsetMs) / 1000);
         if (this.audioEl.paused) this.audioEl.play().catch(() => {});
         return;
       }
       const lineEl = (e.target as HTMLElement | null)?.closest<HTMLElement>('.aml-ayah-line');
       if (lineEl) {
         const ms = Number(lineEl.getAttribute('data-seek-ms') || 0);
-        this.audioEl.currentTime = Math.max(0, (ms - this.syncOffsetMs) / 1000);
+        this.audioEl.currentTime = Math.max(0, (ms - this.effectiveSyncOffsetMs) / 1000);
         if (this.audioEl.paused) this.audioEl.play().catch(() => {});
       }
     });
@@ -1256,7 +1304,7 @@ export class QuranPlayerController {
       if (quranWordEl) {
         const ms = Number(quranWordEl.getAttribute('data-seek-ms') || 0);
         if (ms >= 0 && this.audioEl.src) {
-          this.audioEl.currentTime = Math.max(0, (ms - this.syncOffsetMs) / 1000);
+          this.audioEl.currentTime = Math.max(0, (ms - this.effectiveSyncOffsetMs) / 1000);
           if (this.audioEl.paused) this.audioEl.play().catch(() => {});
           this.startSyncLoop();
           return;
@@ -1316,7 +1364,7 @@ export class QuranPlayerController {
     });
   }
 
-  private rebindAnimator(): void {
+  public rebindAnimator(): void {
     const fsListEl = document.getElementById('aml-ayahs-list');
     const readerWrapEl =
       this.catalog.pageData?.surahNumber === this.currentSurahNumber

@@ -158,7 +158,7 @@ export async function resolveStaticRouteIfNeeded(catalog: BootstrapCatalog): Pro
             <h2 class="surah-listen-hero-title">Listen to Surah <strong>${escapeHtml(sMeta.en)}</strong> recited by <span id="hero-reciter-name-display">${escapeHtml(activeReciter.en)}</span></h2>
             <div class="surah-listen-cta-wrap">
               <button type="button" id="surah-hero-play-btn" class="surah-listen-pill-btn" data-play-surah="${surahId}" data-play-reciter="${escapeHtml(activeReciter.slug)}">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></svg>
                 <span>Listen</span>
               </button>
               <a id="surah-download-btn" href="${escapeHtml(dlHref)}" class="btn-glass-sm" download>

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fetchJuzDetail, fetchMushafPage, fetchSurahDetail, TRANSLATION_EDITIONS, TAFSEER_BOOKS } from './kalamalah-api';
 import { RECITERS_CATALOG } from './reciters-catalog';
 import { renderHomePage } from './views/home';
-import { renderAiAssistantPage, renderAsmaUlHusnaPage, renderDuasPage } from './views/islamic-pages';
+import { renderAsmaUlHusnaPage, renderDuasPage } from './views/islamic-pages';
 import {
   renderJuzPageView,
   renderLanguagesPage,
@@ -82,7 +82,6 @@ async function runStaticExport(): Promise<void> {
   await writeHtmlSlug('tajweed', renderTajweedGuidePage());
   await writeHtmlSlug('duas', renderDuasPage());
   await writeHtmlSlug('names', renderAsmaUlHusnaPage());
-  await writeHtmlSlug('ai', renderAiAssistantPage());
 
   for (const r of RECITERS_CATALOG) {
     await writeHtmlSlug(`reciter-${r.slug}`, renderReciterProfilePage(r.slug));
