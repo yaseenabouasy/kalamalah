@@ -1245,7 +1245,7 @@ function initMobileSidebarControls(): void {
   }
 
   // Tajweed toggle (mirrors #tajweed-color-toggle)
-  const tajweedToggle = document.getElementById('mobile-tajweed-toggle');
+  const tajweedToggle = document.getElementById('mobile-tajweed-toggle') as HTMLInputElement | null;
   const tajweedToggleBtn = document.getElementById('tajweed-color-toggle');
   if (tajweedToggle && tajweedToggleBtn) {
     const saved = localStorage.getItem('kalamalah_tajweed_enabled') === '1';
@@ -1262,7 +1262,7 @@ function initMobileSidebarControls(): void {
   }
 
   // Diacritics toggle (mirrors #diacritics-panel-toggle)
-  const diacriticsToggle = document.getElementById('mobile-diacritics-toggle');
+  const diacriticsToggle = document.getElementById('mobile-diacritics-toggle') as HTMLInputElement | null;
   const diacriticsBtn = document.getElementById('diacritics-panel-toggle');
   if (diacriticsToggle && diacriticsBtn) {
     const saved = localStorage.getItem('kalamalah_diacritics_enabled') === '1';
@@ -1278,7 +1278,7 @@ function initMobileSidebarControls(): void {
   }
 
   // Memorization toggle (mirrors #memorization-panel-toggle)
-  const memoToggle = document.getElementById('mobile-memorization-toggle');
+  const memoToggle = document.getElementById('mobile-memorization-toggle') as HTMLInputElement | null;
   const memoBtn = document.getElementById('memorization-panel-toggle');
   if (memoToggle && memoBtn) {
     const saved = localStorage.getItem('kalamalah_memorization_enabled') === '1';

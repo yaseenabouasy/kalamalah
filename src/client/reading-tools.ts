@@ -250,8 +250,9 @@ export function initReadingTools(): void {
   });
 
   // Sync with mobile sidebar reading font dropdown
-  window.addEventListener('kalamalah:reading-font-changed', (e: CustomEvent<{ font: ReadingFont }>) => {
-    setReadingFont(e.detail.font);
+  window.addEventListener('kalamalah:reading-font-changed', (e: Event) => {
+    const ce = e as CustomEvent<{ font: ReadingFont }>;
+    setReadingFont(ce.detail.font);
   });
 
   // 2. Font Size Stepper
@@ -295,10 +296,11 @@ export function initReadingTools(): void {
   });
 
   // Sync with mobile sidebar tajweed toggle
-  window.addEventListener('kalamalah:tajweed-changed', (e: CustomEvent<{ enabled: boolean }>) => {
-    tajweedEnabled = e.detail.enabled;
-    tajweedToggleBtn.classList.toggle('active', tajweedEnabled);
-    tajweedToggleBtn.setAttribute('aria-pressed', String(tajweedEnabled));
+  window.addEventListener('kalamalah:tajweed-changed', (e: Event) => {
+    const ce = e as CustomEvent<{ enabled: boolean }>;
+    tajweedEnabled = ce.detail.enabled;
+    tajweedToggleBtn?.classList.toggle('active', tajweedEnabled);
+    tajweedToggleBtn?.setAttribute('aria-pressed', String(tajweedEnabled));
     tajweedPanel?.classList.toggle('hidden', !tajweedEnabled);
     refreshAllWordsRender();
   });
@@ -321,10 +323,11 @@ export function initReadingTools(): void {
   });
 
   // Sync with mobile sidebar diacritics toggle
-  window.addEventListener('kalamalah:diacritics-changed', (e: CustomEvent<{ enabled: boolean }>) => {
-    const hidden = e.detail.enabled ? false : true;
+  window.addEventListener('kalamalah:diacritics-changed', (e: Event) => {
+    const ce = e as CustomEvent<{ enabled: boolean }>;
+    const hidden = ce.detail.enabled ? false : true;
     diacriticsPanel?.classList.toggle('hidden', hidden);
-    diacriticsBtn.classList.toggle('active', e.detail.enabled);
+    diacriticsBtn?.classList.toggle('active', ce.detail.enabled);
   });
 
   document.querySelectorAll<HTMLElement>('[data-tashkeel-preset]').forEach((btn) => {
@@ -345,10 +348,11 @@ export function initReadingTools(): void {
   });
 
   // Sync with mobile sidebar memorization toggle
-  window.addEventListener('kalamalah:memorization-changed', (e: CustomEvent<{ enabled: boolean }>) => {
-    const hidden = e.detail.enabled ? false : true;
+  window.addEventListener('kalamalah:memorization-changed', (e: Event) => {
+    const ce = e as CustomEvent<{ enabled: boolean }>;
+    const hidden = ce.detail.enabled ? false : true;
     memoPanel?.classList.toggle('hidden', hidden);
-    memoBtn.classList.toggle('active', e.detail.enabled);
+    memoBtn?.classList.toggle('active', ce.detail.enabled);
   });
 
   document.querySelectorAll<HTMLElement>('[data-memo-density]').forEach((btn) => {

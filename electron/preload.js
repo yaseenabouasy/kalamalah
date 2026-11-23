@@ -9,8 +9,8 @@ contextBridge.exposeInMainWorld('kalamalahElectron', {
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   
   // Listen for maximize state changes
-  onMaximized: (callback) => {
-    ipcRenderer.on('window:maximized', (_, isMaximized) => callback(isMaximized));
+  onMaximized: (callback: (isMaximized: boolean) => void) => {
+    ipcRenderer.on('window:maximized', (_, isMaximized: boolean) => callback(isMaximized));
     return () => ipcRenderer.off('window:maximized', callback);
   },
 

@@ -331,6 +331,11 @@ export class QuranPlayerController {
     const wordNum = wordIdx + 1;
     const url = `https://audio.qurancdn.com/wbw/${String(surahNum).padStart(3, '0')}_${String(ayahNum).padStart(3, '0')}_${String(wordNum).padStart(3, '0')}.mp3`;
 
+    if (!this.wordAudioEl) {
+      this.wordAudioEl = new Audio();
+      this.wordAudioEl.preload = 'auto';
+      this.wordAudioEl.crossOrigin = 'anonymous';
+    }
     this.wordAudioEl.src = url;
     this.wordAudioEl.play().catch((err) => {
       console.warn('[Kalamalah] Word audio playback failed:', err);
