@@ -68,11 +68,11 @@ function createWindow() {
       nodeIntegration: false,
       preload: path.join(__dirname, 'preload.js'),
     },
-    // macOS style window
+    // macOS: native traffic lights (requires frame: true)
+    // Windows/Linux: frameless with custom controls
+    frame: !IS_MAC,
     titleBarStyle: IS_MAC ? 'hiddenInset' : 'hidden',
     trafficLightPosition: IS_MAC ? { x: 18, y: 18 } : undefined,
-    // Remove top border on all platforms
-    frame: false,
     // Visual
     vibrancy: IS_MAC ? 'under-window' : undefined,
     visualEffectState: IS_MAC ? 'active' : undefined,
