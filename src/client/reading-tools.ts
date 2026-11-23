@@ -147,12 +147,14 @@ export function filterWordDiacritics(rawWord: string, preset: TashkeelPreset): s
 let readingToolsGlobalBound = false;
 
 export function initReadingTools(): void {
-  let tajweedEnabled = false;
+  let tajweedEnabled = localStorage.getItem('kalamalah_tajweed_enabled') === '1';
   let currentTajweedSchema: TajweedSchema = 'printed';
   let currentTashkeelPreset: TashkeelPreset = 'all';
   let currentMemoDensity = 0;
   let currentReadingFont: ReadingFont = (localStorage.getItem('kalamalah_reading_font') || 'uthmani') as ReadingFont;
   let fontSizePercent = Number(localStorage.getItem('kalamalah_font_scale') || 100);
+  let diacriticsEnabled = localStorage.getItem('kalamalah_diacritics_enabled') === '1';
+  let memorizationEnabled = localStorage.getItem('kalamalah_memorization_enabled') === '1';
 
   const wordEls = () => Array.from(document.querySelectorAll<HTMLElement>('.quran-word'));
 
@@ -247,6 +249,11 @@ export function initReadingTools(): void {
     });
   });
 
+  // Sync with mobile sidebar reading font dropdown
+  window.addEventListener('kalamalah:reading-font-changed', (e: CustomEvent<{ font: ReadingFont }>) => {
+    setReadingFont(e.detail.font);
+  });
+
   // 2. Font Size Stepper
   const fontValEl = document.getElementById('font-size-val');
   const applyFontScale = (scale: number) => {
@@ -280,6 +287,16 @@ export function initReadingTools(): void {
   const tajweedPanel = document.getElementById('tajweed-settings-panel');
   tajweedToggleBtn?.addEventListener('click', () => {
     tajweedEnabled = !tajweedEnabled;
+    localStorage.setItem('kalamalah_tajweed_enabled', tajweedEnabled ? '1' : '0');
+    tajweedToggleBtn.classList.toggle('active', tajweedEnabled);
+    tajweedToggleBtn.setAttribute('aria-pressed', String(tajweedEnabled));
+    tajweedPanel?.classList.toggle('hidden', !tajweedEnabled);
+    refreshAllWordsRender();
+  });
+
+  // Sync with mobile sidebar tajweed toggle
+  window.addEventListener('kalamalah:tajweed-changed', (e: CustomEvent<{ enabled: boolean }>) => {
+    tajweedEnabled = e.detail.enabled;
     tajweedToggleBtn.classList.toggle('active', tajweedEnabled);
     tajweedToggleBtn.setAttribute('aria-pressed', String(tajweedEnabled));
     tajweedPanel?.classList.toggle('hidden', !tajweedEnabled);
@@ -300,6 +317,14 @@ export function initReadingTools(): void {
   diacriticsBtn?.addEventListener('click', () => {
     const hidden = diacriticsPanel?.classList.toggle('hidden');
     diacriticsBtn.classList.toggle('active', !hidden);
+    localStorage.setItem('kalamalah_diacritics_enabled', (!hidden) ? '1' : '0');
+  });
+
+  // Sync with mobile sidebar diacritics toggle
+  window.addEventListener('kalamalah:diacritics-changed', (e: CustomEvent<{ enabled: boolean }>) => {
+    const hidden = e.detail.enabled ? false : true;
+    diacriticsPanel?.classList.toggle('hidden', hidden);
+    diacriticsBtn.classList.toggle('active', e.detail.enabled);
   });
 
   document.querySelectorAll<HTMLElement>('[data-tashkeel-preset]').forEach((btn) => {
@@ -316,6 +341,14 @@ export function initReadingTools(): void {
   memoBtn?.addEventListener('click', () => {
     const hidden = memoPanel?.classList.toggle('hidden');
     memoBtn.classList.toggle('active', !hidden);
+    localStorage.setItem('kalamalah_memorization_enabled', (!hidden) ? '1' : '0');
+  });
+
+  // Sync with mobile sidebar memorization toggle
+  window.addEventListener('kalamalah:memorization-changed', (e: CustomEvent<{ enabled: boolean }>) => {
+    const hidden = e.detail.enabled ? false : true;
+    memoPanel?.classList.toggle('hidden', hidden);
+    memoBtn.classList.toggle('active', e.detail.enabled);
   });
 
   document.querySelectorAll<HTMLElement>('[data-memo-density]').forEach((btn) => {

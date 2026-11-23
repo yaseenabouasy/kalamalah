@@ -1,0 +1,11 @@
+{
+  "version": "1.2.0",
+  "updateNumber": 2,
+  "date": "2026-11-17",
+  "notes": [
+    "Hijri Calendar banner on the Surahs page with White Days indicator",
+    "Debug & Sync DevTools overlay (?debug=1)",
+    "Release version check via updateNumber",
+    "Enhanced Discord Open Graph embeds for Surahs & Ayahs"
+  ]
+}

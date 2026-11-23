@@ -1,4 +1,3 @@
-import gsap from 'gsap';
 import { applyUiLocale, escapeHtml, getActiveLocale, isRtlLocale, type UiLocale } from './i18n';
 import { QuranPlayerController, type BootstrapCatalog } from './quran-player';
 import { initReadingTools } from './reading-tools';
@@ -16,6 +15,16 @@ import { initChangelogModal } from './changelog-modal';
 import { initAmbientMixer } from './ambient-mixer';
 import { initHifzTools } from './hifz-tools';
 import { initDualScreenMode } from './tv-display';
+import { initHijriCalendarBanner } from './hijri-calendar';
+import { initDebugOverlay } from './debug-overlay';
+import { checkForUpdates } from './version-check';
+import { initIosFullscreen } from './ios-fullscreen';
+import { initMediaSession } from './media-session';
+import { initCastController } from './cast-controller';
+import { initAyahCardGenerator } from './ayah-card';
+import { initAyahEmbedWidget } from './ayah-embed';
+import { initWindowControls } from './window-controls';
+import { initZarazConsent, setZarazConsent, trackPageView } from './zaraz';
 
 function parseBootstrapCatalog(): BootstrapCatalog {
   try {
@@ -402,6 +411,10 @@ function initSearchableDropdowns(
     document.querySelectorAll<HTMLElement>('.header-lang-opt').forEach((btn) => {
       btn.classList.toggle('active', btn.getAttribute('data-select-lang') === lang);
     });
+    // Also sync mobile dropdown if it exists (it's a SearchableDropdown instance)
+    for (const dd of langDropdownInstances) {
+      dd.setValue([lang], false);
+    }
   };
   const onSelectLang = (nextLang: UiLocale) => {
     applyUiLocale(nextLang, catalog);
@@ -458,6 +471,23 @@ function initSearchableDropdowns(
     );
   }
 
+  // Mobile sidebar language dropdown
+  const mobileLangEl = document.getElementById('mobile-lang-dropdown');
+  if (mobileLangEl) {
+    langDropdownInstances.push(
+      new SearchableDropdown(mobileLangEl, {
+        options: langOptions,
+        initial: [savedLang],
+        clearable: false,
+        searchable: false,
+        showFooterHints: false,
+        onChange: (vals) => {
+          if (vals[0]) onSelectLang(vals[0] as UiLocale);
+        },
+      })
+    );
+  }
+
   applyUiLocale(savedLang, catalog);
 
   return {
@@ -489,11 +519,16 @@ function initHomeTabsAndFilters(): void {
       panel.classList.toggle('hidden', !isActive);
       panel.classList.toggle('active', isActive);
       if (isActive && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        gsap.fromTo(
-          panel,
-          { opacity: 0, y: 8 },
-          { opacity: 1, y: 0, duration: 0.24, ease: 'power2.out', clearProps: 'transform,opacity' }
-        );
+        panel.animate(
+          [
+            { opacity: 0, transform: 'translateY(8px)' },
+            { opacity: 1, transform: 'translateY(0)' }
+          ],
+          { duration: 240, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)', fill: 'forwards' }
+        ).finished.then(() => {
+          panel.style.opacity = '';
+          panel.style.transform = '';
+        });
       }
     });
     const filterWrap = document.getElementById('surah-filter-controls');
@@ -955,6 +990,8 @@ function initCookieConsentBanner(): void {
     try {
       localStorage.setItem(KEY, choice);
     } catch {}
+    // Tell Zaraz right away; purposes stay denied until it is loaded.
+    setZarazConsent(choice);
     banner.classList.remove('is-visible');
     setTimeout(() => banner.classList.add('hidden'), 240);
   };
@@ -1027,6 +1064,7 @@ function initSoftSpaNavigation(
           onPageSwapped();
           player.rebindAnimator();
           window.scrollTo({ top: 0, behavior: 'auto' });
+          trackPageView(targetUrl.pathname, document.title);
           return;
         }
         window.location.href = targetUrl.href;
@@ -1047,6 +1085,7 @@ function initSoftSpaNavigation(
 
       document.title = doc.title || document.title;
       mainEl.innerHTML = nextMain.innerHTML;
+      trackPageView(targetUrl.pathname, document.title);
 
       try {
         const bootEl = doc.getElementById('kalamalah-bootstrap');
@@ -1106,8 +1145,15 @@ function initSoftSpaNavigation(
 
 function initKeyboardShortcuts(player: QuranPlayerController): void {
   document.addEventListener('keydown', (e) => {
-    const tag = (e.target as HTMLElement | null)?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement | null)?.isContentEditable) {
+    const target = e.target as HTMLElement | null;
+    // Ignore typing contexts and any focused interactive control: otherwise
+    // Space on a focused button toggles playback twice.
+    if (
+      target?.isContentEditable ||
+      target?.closest(
+        'input, textarea, select, button, a, [role="button"], [role="slider"], [contenteditable="true"]'
+      )
+    ) {
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1115,7 +1161,7 @@ function initKeyboardShortcuts(player: QuranPlayerController): void {
     switch (e.code) {
       case 'Space':
         e.preventDefault();
-        document.getElementById('qp-play-btn')?.click();
+        document.getElementById('qp-play-toggle-btn')?.click();
         break;
       case 'KeyJ':
         e.preventDefault();
@@ -1129,13 +1175,16 @@ function initKeyboardShortcuts(player: QuranPlayerController): void {
         e.preventDefault();
         document.getElementById('qp-repeat-btn')?.click();
         break;
-      case 'KeyM':
+      case 'KeyM': {
         e.preventDefault();
-        document.getElementById('qp-mute-btn')?.click();
+        // There is no mute button in the UI; toggle the element directly.
+        const audio = document.getElementById('kalamalah-audio-el') as HTMLAudioElement | null;
+        if (audio) audio.muted = !audio.muted;
         break;
+      }
       case 'KeyF':
         e.preventDefault();
-        document.getElementById('qp-fullscreen-btn')?.click();
+        document.getElementById('qp-expand-fullscreen-btn')?.click();
         break;
     }
   });
@@ -1164,11 +1213,93 @@ function applyDeepLinkParams(player: QuranPlayerController): void {
   }
 }
 
+function initMobileSidebarControls(): void {
+  // Reading Font dropdown (mirrors desktop [data-set-reading-font] buttons)
+  const mobileFontEl = document.getElementById('mobile-reading-font-dropdown');
+  if (mobileFontEl && typeof SearchableDropdown !== 'undefined') {
+    new SearchableDropdown(mobileFontEl, {
+      options: [
+        { value: 'uthmani', label: 'Uthmani (عثماني)' },
+        { value: 'kitab', label: 'Kitab (كتاب)' },
+        { value: 'amiri', label: 'Amiri (أميري)' },
+        { value: 'nastaleeq', label: 'Nastaleeq (نستعليق)' },
+      ],
+      initial: [localStorage.getItem('kalamalah_reading_font') || 'uthmani'],
+      clearable: false,
+      searchable: false,
+      showFooterHints: false,
+      onChange: (vals) => {
+        if (vals[0]) {
+          const font = vals[0] as 'uthmani' | 'kitab' | 'amiri' | 'nastaleeq';
+          document.documentElement.setAttribute('data-reading-font', font);
+          localStorage.setItem('kalamalah_reading_font', font);
+          document.querySelectorAll<HTMLElement>('[data-set-reading-font]').forEach((btn) => {
+            btn.classList.toggle('active', btn.getAttribute('data-set-reading-font') === font);
+          });
+          // Trigger refresh
+          const event = new CustomEvent('kalamalah:reading-font-changed', { detail: { font } });
+          window.dispatchEvent(event);
+        }
+      },
+    });
+  }
+
+  // Tajweed toggle (mirrors #tajweed-color-toggle)
+  const tajweedToggle = document.getElementById('mobile-tajweed-toggle');
+  const tajweedToggleBtn = document.getElementById('tajweed-color-toggle');
+  if (tajweedToggle && tajweedToggleBtn) {
+    const saved = localStorage.getItem('kalamalah_tajweed_enabled') === '1';
+    tajweedToggle.checked = saved;
+    tajweedToggleBtn.classList.toggle('active', saved);
+    tajweedToggle.addEventListener('change', () => {
+      const enabled = tajweedToggle.checked;
+      localStorage.setItem('kalamalah_tajweed_enabled', enabled ? '1' : '0');
+      tajweedToggleBtn.classList.toggle('active', enabled);
+      tajweedToggleBtn.setAttribute('aria-pressed', String(enabled));
+      const event = new CustomEvent('kalamalah:tajweed-changed', { detail: { enabled } });
+      window.dispatchEvent(event);
+    });
+  }
+
+  // Diacritics toggle (mirrors #diacritics-panel-toggle)
+  const diacriticsToggle = document.getElementById('mobile-diacritics-toggle');
+  const diacriticsBtn = document.getElementById('diacritics-panel-toggle');
+  if (diacriticsToggle && diacriticsBtn) {
+    const saved = localStorage.getItem('kalamalah_diacritics_enabled') === '1';
+    diacriticsToggle.checked = saved;
+    diacriticsBtn.classList.toggle('active', saved);
+    diacriticsToggle.addEventListener('change', () => {
+      const enabled = diacriticsToggle.checked;
+      localStorage.setItem('kalamalah_diacritics_enabled', enabled ? '1' : '0');
+      diacriticsBtn.classList.toggle('active', enabled);
+      const event = new CustomEvent('kalamalah:diacritics-changed', { detail: { enabled } });
+      window.dispatchEvent(event);
+    });
+  }
+
+  // Memorization toggle (mirrors #memorization-panel-toggle)
+  const memoToggle = document.getElementById('mobile-memorization-toggle');
+  const memoBtn = document.getElementById('memorization-panel-toggle');
+  if (memoToggle && memoBtn) {
+    const saved = localStorage.getItem('kalamalah_memorization_enabled') === '1';
+    memoToggle.checked = saved;
+    memoBtn.classList.toggle('active', saved);
+    memoToggle.addEventListener('change', () => {
+      const enabled = memoToggle.checked;
+      localStorage.setItem('kalamalah_memorization_enabled', enabled ? '1' : '0');
+      memoBtn.classList.toggle('active', enabled);
+      const event = new CustomEvent('kalamalah:memorization-changed', { detail: { enabled } });
+      window.dispatchEvent(event);
+    });
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const catalog = parseBootstrapCatalog();
   initThemeController();
   initMobileDrawerNavigation();
   initCookieConsentBanner();
+  initZarazConsent();
 
   await resolveStaticRouteIfNeeded(catalog);
   rewriteStaticDownloadLinks(catalog);
@@ -1183,10 +1314,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { syncReciterDropdowns } = initSearchableDropdowns(catalog, player);
     syncReciterHook = syncReciterDropdowns;
     initReadingTools();
+    initMobileSidebarControls();
     initHomeTabsAndFilters();
     initScrollToTopAndIslamicPages();
     initReciterBioFromApi();
     applyUiLocale(getActiveLocale(), catalog);
+    initHijriCalendarBanner();
   };
 
   reinitPageContent();
@@ -1214,4 +1347,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   initDualScreenMode();
   initKeyboardShortcuts(player);
   applyDeepLinkParams(player);
+  initDebugOverlay();
+  void checkForUpdates();
+  initIosFullscreen();
+  initMediaSession();
+  initCastController();
+  initAyahCardGenerator();
+  initAyahEmbedWidget();
+  initWindowControls();
 });

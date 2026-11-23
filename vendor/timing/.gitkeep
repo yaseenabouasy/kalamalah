@@ -1,0 +1,4 @@
+# This directory contains pre-fetched word-by-word timing data for static export.
+# Files are generated during `bun run build:static` with STATIC_FULL=1.
+# Each file: {reciterSlug}-{surahNumber}.json
+# Do not edit manually — regenerate with: STATIC_FULL=1 bun run src/server/static-export.ts

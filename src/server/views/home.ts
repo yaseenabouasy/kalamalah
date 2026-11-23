@@ -32,13 +32,17 @@ export function renderHomePage(): string {
       </div>
       <div class="juz-card-body">
         <h3 class="juz-name-ar">Juz ${j.number} (${escapeHtml(j.titleAr)})</h3>
-        <p class="juz-start-info">Surah ${escapeHtml(startEn)}</p>
+        <p class="juz-start-info">Surah ${escapeHtml(startEn)} · Ayah ${j.startAyahNumber}</p>
       </div>
     </a>`;
   }).join('\n');
 
   const bodyContent = `
     <section class="browse-section container" id="browse-quran">
+      <div id="hijri-calendar-banner" class="hijri-calendar-banner" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;margin-bottom:14px;border-radius:12px;background:var(--bg-card,rgba(255,255,255,0.04));border:1px solid var(--border-subtle,rgba(255,255,255,0.08));font-size:0.875rem;">
+        <span id="hijri-date-text">Loading Hijri date...</span>
+        <span id="hijri-white-days-badge" style="display:none;padding:2px 8px;border-radius:999px;background:rgba(16,185,129,0.16);color:#34d399;font-weight:600;font-size:0.75rem;">White Days (Ayyam al-Bid)</span>
+      </div>
       <div class="browse-toolbar">
         <div class="browse-tabs" role="tablist" aria-label="Browse Quran">
           <button type="button" role="tab" aria-selected="true" class="browse-tab active" data-switch-tab="view-surah">

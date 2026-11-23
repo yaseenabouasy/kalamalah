@@ -190,9 +190,22 @@ export const TRANSLATION_EDITIONS: TranslationEdition[] = [
   { code: 'de', editionId: 'de.bubenheim', languageNameAr: 'الألمانية (Bubenheim)', languageNameEn: 'Deutsch (Bubenheim & Elyas)', translatorName: 'Bubenheim & Elyas', dir: 'ltr' },
 ];
 
+/**
+ * Canonical Juz start verses. Most Juz boundaries fall mid-surah, so matching
+ * on `SURAHS_META.juz` (the surah that *begins* in that Juz) gives the wrong
+ * label for Juz 2, 5, 11, 12, 19 and others.
+ */
+const JUZ_START: ReadonlyArray<readonly [surah: number, ayah: number]> = [
+  [1, 1], [2, 142], [2, 253], [3, 93], [4, 24], [4, 148], [5, 82], [6, 111],
+  [7, 88], [8, 41], [9, 93], [11, 6], [12, 53], [15, 1], [17, 1], [18, 75],
+  [21, 1], [23, 1], [25, 21], [27, 56], [29, 46], [33, 31], [36, 28], [39, 32],
+  [41, 47], [46, 1], [51, 31], [58, 1], [67, 1], [78, 1],
+];
+
 export const JUZ_META = Array.from({ length: 30 }, (_, idx) => {
   const juzNum = idx + 1;
-  const startSurah = SURAHS_META.find((s) => s.juz === juzNum) ?? SURAHS_META[0]!;
+  const [startSurahNumber, startAyahNumber] = JUZ_START[idx] ?? [1, 1];
+  const startSurah = SURAHS_META[startSurahNumber - 1] ?? SURAHS_META[0]!;
   const juzNamesAr = [
     'الم', 'سيقول', 'تلك الرسل', 'لن تنالوا', 'والمحصنات', 'لا يحب الله', 'وإذا سمعوا', 'ولو أننا', 'قال الملأ', 'واعلموا',
     'يعتذرون', 'وما من دابة', 'وما أبرئ', 'ربما', 'سبحان الذي', 'قال ألم', 'اقترب للناس', 'قد أفلح', 'وقال الذين', 'أمن خلق',
@@ -202,8 +215,9 @@ export const JUZ_META = Array.from({ length: 30 }, (_, idx) => {
     number: juzNum,
     nameAr: `الجزء ${juzNum} (${juzNamesAr[idx] ?? ''})`,
     titleAr: juzNamesAr[idx] ?? `الجزء ${juzNum}`,
-    startSurahNumber: startSurah.number,
+    startSurahNumber,
     startSurahNameAr: startSurah.nameAr,
+    startAyahNumber,
     startPage: juzNum === 1 ? 1 : (juzNum - 1) * 20 + 2,
     hizbStart: (juzNum - 1) * 2 + 1,
     hizbEnd: juzNum * 2,
@@ -211,26 +225,57 @@ export const JUZ_META = Array.from({ length: 30 }, (_, idx) => {
 });
 
 const memoryApiCache = new Map<string, { data: unknown; expiresAt: number }>();
+const MAX_API_CACHE_ENTRIES = 250;
+/** How long a failed upstream request is remembered before it is retried. */
+const NEGATIVE_CACHE_TTL_MS = 60_000;
 const API_BASE = 'https://api.kalamalah.com';
+
+/** Insert with most-recently-used ordering and evict the oldest past the cap. */
+function lruSet(key: string, value: { data: unknown; expiresAt: number }): void {
+  memoryApiCache.delete(key);
+  memoryApiCache.set(key, value);
+  while (memoryApiCache.size > MAX_API_CACHE_ENTRIES) {
+    const oldest = memoryApiCache.keys().next().value;
+    if (oldest === undefined) break;
+    memoryApiCache.delete(oldest);
+  }
+}
 
 async function fetchJsonCached<T>(url: string, ttlMs = 1000 * 60 * 60 * 12): Promise<T | null> {
   const now = Date.now();
   const hit = memoryApiCache.get(url);
   if (hit && hit.expiresAt > now) {
+    lruSet(url, hit); // refresh recency
     return hit.data as T;
   }
-  try {
-    const res = await fetch(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'KalamalahPlayer/1.0' },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as T;
-    memoryApiCache.set(url, { data: json, expiresAt: now + ttlMs });
-    return json;
-  } catch {
-    return null;
+  // Retry with exponential backoff for transient failures
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json', 'User-Agent': 'KalamalahPlayer/1.0' },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) {
+        lastError = new Error(`HTTP ${res.status} for ${url}`);
+        // Don't retry 4xx errors (except 429)
+        if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+          break;
+        }
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+        continue;
+      }
+      const json = (await res.json()) as T;
+      lruSet(url, { data: json, expiresAt: now + ttlMs });
+      return json;
+    } catch (e) {
+      lastError = e as Error;
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+    }
   }
+  // Remember the failure briefly
+  lruSet(url, { data: null, expiresAt: now + NEGATIVE_CACHE_TTL_MS });
+  return null;
 }
 
 export function getSurahMeta(surahNumber: number): SurahMeta {
@@ -331,6 +376,12 @@ export async function fetchSurahDetail(
     }
   }
 
+  // Never return an empty surah: callers cache the HTML, so an upstream
+  // outage would otherwise be persisted as a verse-less page for hours.
+  if (ayahs.length === 0) {
+    throw new Error(`No ayahs returned for surah ${meta.number}`);
+  }
+
   return { meta, ayahs };
 }
 
@@ -373,6 +424,10 @@ export async function fetchMushafPage(pageNumber: number): Promise<{
 
   const surahsOnPage = Array.from(surahSet).map((n) => getSurahMeta(n));
   const first = ayahs[0];
+
+  if (ayahs.length === 0) {
+    throw new Error(`No ayahs returned for mushaf page ${page}`);
+  }
 
   return {
     page,
@@ -425,6 +480,10 @@ export async function fetchJuzDetail(juzNumber: number): Promise<{
     } else {
       lastGroup.ayahs.push(ayah);
     }
+  }
+
+  if (ayahs.length === 0) {
+    throw new Error(`No ayahs returned for juz ${juz}`);
   }
 
   return { juz, ayahs, groups };

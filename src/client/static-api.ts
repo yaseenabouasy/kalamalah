@@ -287,6 +287,67 @@ export async function fetchTimingsApi(
     }
   }
 
+  interface TimingManifest {
+  [provider: string]: {
+    [reciterSlug: string]: { surahs: number[]; source: string };
+  };
+}
+
+  // In static mode, use the manifest to know which provider has timing for this surah
+  // Provider priority: qurancdn (Quran.com word-by-word) > islamonline > kalamalah > mp3quran
+  const providerPriority: Array<'qurancdn' | 'islamonline' | 'kalamalah' | 'mp3quran'> = [
+    'qurancdn',
+    'islamonline',
+    'kalamalah',
+    'mp3quran',
+  ];
+
+  if (isStaticMode()) {
+    // Load manifest once (cached by browser)
+    let manifest: TimingManifest | null = null;
+    try {
+      const res = await fetch('/vendor/timing/index.json', { signal, cache: 'force-cache' });
+      if (res.ok) manifest = (await res.json()) as TimingManifest;
+    } catch {}
+
+    // Try each provider in priority order
+    for (const provider of providerPriority) {
+      if (!manifest?.[provider]) continue;
+
+      // Find which reciter in this provider has this surah
+      for (const [providerReciterSlug, info] of Object.entries(manifest[provider])) {
+        if (info.surahs.includes(surahNumber)) {
+          try {
+            const res = await fetch(`/vendor/timing/${provider}/${providerReciterSlug}-${surahNumber}.json`, { signal, cache: 'force-cache' });
+            if (res.ok) {
+              const timings = (await res.json()) as NormalizedSurahTimings;
+              if (timings && timings.mode === 'word' && timings.ayahs.length > 0) {
+                // Override reciterSlug to match requested one for display
+                return { ...timings, reciterSlug };
+              }
+            }
+          } catch {
+            // Try next reciter/provider
+          }
+        }
+      }
+    }
+
+    // Fallback: combined static-timings.json (generated at build time)
+    try {
+      const res = await fetch('/static-timings.json', { signal, cache: 'force-cache' });
+      if (res.ok) {
+        const allTimings = (await res.json()) as Record<number, NormalizedSurahTimings>;
+        const timings = allTimings[surahNumber];
+        if (timings && timings.mode === 'word' && timings.ayahs.length > 0) {
+          return { ...timings, reciterSlug };
+        }
+      }
+    } catch {
+      // Fall through to external APIs
+    }
+  }
+
   const reciter =
     catalog?.reciters?.find((r) => r.slug === reciterSlug || String(r.id) === reciterSlug) ??
     catalog?.reciters?.[0];

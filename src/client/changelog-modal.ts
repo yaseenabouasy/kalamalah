@@ -1,4 +1,5 @@
-const CURRENT_VERSION = '1.1.0';
+const CURRENT_VERSION = '1.2.0';
+
 const STORAGE_KEY = 'kalamalah_last_seen_version';
 
 export interface ChangelogEntry {
@@ -8,6 +9,21 @@ export interface ChangelogEntry {
 }
 
 const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.2.0',
+    date: '2026-11-23',
+    highlights: [
+      'Markdown twins for every page — append `.md` to any URL (e.g. `/surah-1.md`, `/juz-2.md`) for AI crawlers and LLM agents',
+      '`/llms.txt` index with all 114 surahs, Juz, reciters and translation editions',
+      'Cloudflare Zaraz integration with deny-by-default consent (cookie banner gating)',
+      'Negative API cache prevents upstream 500 retries from adding ~250 ms per render',
+      'Canonical Juz start-verse table (corrects Juz 2, 5, 9, 11, 12, 19 boundaries)',
+      'Security: audio SSRF allow-list, CSP + secure headers, `/api/download` Range/If-Range streaming, 302→502 on unvalidated URLs',
+      'Service worker rewritten: network-first navigations, stale-while-revalidate assets, allSettled precache',
+      'Lazy fullscreen background (WebGL + 1920px images only on first open), pauses on close',
+      'Keyboard shortcuts fixed: real button IDs + focused-element guard, KeyM toggles mute',
+    ],
+  },
   {
     version: '1.1.0',
     date: '2026-11-15',

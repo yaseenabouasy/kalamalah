@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { safeAudioUrl } from './audio-hosts';
 import { findReciter, getSurahAudioUrl, type ReciterInfo } from './reciters-catalog';
 
 export interface WordTimingSegment {
@@ -242,10 +243,12 @@ function parseKalamalahTimingsJson(
   }
 
   const metaAudioUrl = data?.metadata?.recitation_info?.audio_url ?? data?.audio_url;
-  const cleanAudioUrl =
-    typeof metaAudioUrl === 'string' && metaAudioUrl.includes('api.kalamalah.com/api/')
-      ? metaAudioUrl.replace(/\.mp3$/i, '')
-      : defaultAudioUrl;
+  // Only accept allow-listed hosts. `.mp3` is stripped because the Kalamalah
+  // audio endpoint is served without an extension; the fallback is left intact.
+  const allowedMetaAudioUrl = safeAudioUrl(metaAudioUrl, '');
+  const cleanAudioUrl = allowedMetaAudioUrl
+    ? allowedMetaAudioUrl.replace(/\.mp3$/i, '')
+    : defaultAudioUrl;
 
   return {
     reciterSlug: reciter.slug,
@@ -303,7 +306,7 @@ function parseQuranCdnTimingsJson(
   return {
     reciterSlug: reciter.slug,
     surahNumber: surah,
-    audioUrl: audioFile?.audio_url ?? defaultAudioUrl,
+    audioUrl: safeAudioUrl(audioFile?.audio_url, defaultAudioUrl),
     mode: hasWords ? 'word' : 'ayah',
     source: 'api.qurancdn.com',
     ayahs,

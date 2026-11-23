@@ -1,5 +1,6 @@
 import { SURAHS_META, TRANSLATION_EDITIONS, TAFSEER_BOOKS } from '../kalamalah-api';
 import { getReciterPhotoUrl, RECITERS_CATALOG } from '../reciters-catalog';
+import { renderZarazHeadHtml } from '../zaraz';
 
 export interface LayoutProps {
   title: string;
@@ -32,6 +33,19 @@ export function escapeHtml(str: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+/**
+ * JSON that is safe to embed inside a <script> element.
+ * Escaping `<` prevents upstream text containing `</script>` from closing the
+ * tag; U+2028/U+2029 are escaped because they are not valid JSON string chars
+ * in older engines.
+ */
+export function safeJsonForScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
 }
 
 function buildDiscordComponentEmbedJson(
@@ -104,7 +118,7 @@ function buildDiscordComponentEmbedJson(
       ],
     },
   };
-  return JSON.stringify(payload).replace(/</g, '\\u003c');
+  return safeJsonForScript(payload);
 }
 
 function buildStructuredDataJson(
@@ -141,12 +155,35 @@ function buildStructuredDataJson(
       },
     ],
   };
-  return JSON.stringify(schema).replace(/</g, '\\u003c');
+  return safeJsonForScript(schema);
 }
 
 export function buildRobotsTxt(baseUrl = 'https://kalamalah.com'): string {
   const origin = baseUrl.replace(/\/+$/, '');
-  return `User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`;
+  // AI crawlers get an explicit allow plus pointers to the Markdown twins.
+  // `.md` is appended to any page URL; /llms.txt is the index.
+  const aiAgents = [
+    'GPTBot',
+    'OAI-SearchBot',
+    'ChatGPT-User',
+    'ClaudeBot',
+    'Claude-Web',
+    'PerplexityBot',
+    'Google-Extended',
+    'Bingbot',
+    'CCBot',
+    'Applebot-Extended',
+  ];
+  const aiBlocks = aiAgents
+    .map((agent) => `User-agent: ${agent}\nAllow: /\n`)
+    .join('\n');
+  return `User-agent: *
+Allow: /
+
+${aiBlocks}
+# Markdown for machines: append .md to any page URL, or read /llms.txt
+Sitemap: ${origin}/sitemap.xml
+`;
 }
 
 export function buildSitemapXml(baseUrl = 'https://kalamalah.com'): string {
@@ -189,6 +226,12 @@ export function renderLayout(props: LayoutProps): string {
     props.description ??
     'منصة كلام الله (Kalamalah): تلاوة وتدبر القرآن الكريم مع المزامنة الدقيقة للآيات والكلمات، المصحف الشريف، التفسير، وأحكام التجويد.';
   const canonicalUrl = `https://kalamalah.com${props.canonicalPath ?? '/'}`;
+  const markdownPath = props.canonicalPath ?? '/';
+  const markdownUrl =
+    markdownPath === '/' || markdownPath === ''
+      ? 'https://kalamalah.com/index.md'
+      : `https://kalamalah.com${markdownPath.replace(/\/+$/, '')}.md`;
+  const zarazHeadHtml = renderZarazHeadHtml();
   const discordEmbedJson = buildDiscordComponentEmbedJson(props.title, description, canonicalUrl);
   const structuredDataJson = buildStructuredDataJson(props.title, description, canonicalUrl);
 
@@ -223,7 +266,7 @@ export function renderLayout(props: LayoutProps): string {
   };
 
   return `<!DOCTYPE html>
-<html lang="en" dir="ltr" data-theme="system" data-reading-font="uthmani">
+<html lang="en" dir="ltr" data-reading-font="uthmani">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -235,6 +278,9 @@ export function renderLayout(props: LayoutProps): string {
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
   <link rel="alternate" hreflang="x-default" href="${escapeHtml(canonicalUrl)}" />
+  <link rel="alternate" type="text/markdown" href="${escapeHtml(markdownUrl)}" title="Markdown version" />
+  <link rel="llms-txt" href="/llms.txt" />
+  ${zarazHeadHtml}
   <meta name="theme-color" content="#c8a45d" />
   <meta name="darkreader-lock" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -291,17 +337,17 @@ export function renderLayout(props: LayoutProps): string {
   <link rel="preload" href="/fonts/sfarabic.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/SF-Pro-Display-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/SF-Pro-Display-Bold.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" />
-  <link rel="preconnect" href="https://api.kalamalah.com" crossorigin />
-  <link rel="stylesheet" href="https://api.kalamalah.com/api/fonts.css" />
+  <link rel="preload" href="/vendor/fonts/tajawal/Tajawal-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/vendor/fonts/tajawal/Tajawal-Medium.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/vendor/fonts/tajawal/Tajawal-Bold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/vendor/fonts/tajawal/Tajawal-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/vendor/fonts/tajawal/tajawal.css" />
 
-  <!-- AeroUI Components (from main/player.html) -->
-  <link rel="stylesheet" href="https://nurislamaibekuly.github.io/aeroui/src/aeroui.css" crossorigin="anonymous" />
-  <script type="module" src="https://nurislamaibekuly.github.io/aeroui/src/components/elastic-slider/elastic-slider.js" crossorigin="anonymous"></script>
-  <script type="module" src="https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js" crossorigin="anonymous"></script>
-  <script type="module" src="https://nurislamaibekuly.github.io/aeroui/src/components/skip-label/skip-label.js" crossorigin="anonymous"></script>
+  <!-- Local AeroUI Components (self-hosted from vendor/) -->
+  <link rel="stylesheet" href="/vendor/aeroui/aeroui.css" />
+  <script type="module" src="/vendor/aeroui/components/elastic-slider/elastic-slider.js"></script>
+  <script type="module" src="/vendor/aeroui/components/player-button/player-button.js"></script>
+  <script type="module" src="/vendor/aeroui/components/skip-label/skip-label.js"></script>
 
   <!-- Application Stylesheets -->
   <link rel="stylesheet" href="/css/searchable-dropdown.css" />
@@ -469,11 +515,45 @@ export function renderLayout(props: LayoutProps): string {
             </div>
 
             <div class="mobile-sidebar-theme-row">
-              <span class="mobile-sub-label">Theme:</span>
+              <label id="mobile-lang-lbl" class="mobile-sub-label" data-i18n="uiLanguage">UI Language</label>
+              <div id="mobile-lang-dropdown" data-sd-label="mobile-lang-lbl"></div>
+            </div>
+
+            <div class="mobile-sidebar-theme-row">
+              <span class="mobile-sub-label" data-i18n="themeAuto">Theme</span>
               <div class="theme-segmented" role="group" aria-label="Theme">
                 <button type="button" class="theme-seg-btn" data-set-theme="dark" data-i18n="themeDark">Dark</button>
                 <button type="button" class="theme-seg-btn" data-set-theme="light" data-i18n="themeLight">Light</button>
               </div>
+            </div>
+
+            <div class="mobile-sidebar-theme-row">
+              <span class="mobile-sub-label" data-i18n="fontUthmani">Reading Font</span>
+              <div id="mobile-reading-font-dropdown" data-sd-label="mobile-reading-font-lbl"></div>
+            </div>
+
+            <div class="mobile-sidebar-theme-row">
+              <span class="mobile-sub-label">Tajweed Colors</span>
+              <label class="mobile-toggle">
+                <input type="checkbox" id="mobile-tajweed-toggle" />
+                <span class="mobile-toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="mobile-sidebar-theme-row">
+              <span class="mobile-sub-label">Diacritics</span>
+              <label class="mobile-toggle">
+                <input type="checkbox" id="mobile-diacritics-toggle" />
+                <span class="mobile-toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="mobile-sidebar-theme-row">
+              <span class="mobile-sub-label">Memorization</span>
+              <label class="mobile-toggle">
+                <input type="checkbox" id="mobile-memorization-toggle" />
+                <span class="mobile-toggle-slider"></span>
+              </label>
             </div>
           </div>
         </div>
@@ -708,7 +788,7 @@ export function renderLayout(props: LayoutProps): string {
       </div>
     </div>
 
-    <audio id="kalamalah-audio-el" preload="none" crossorigin="anonymous"></audio>
+    <audio id="kalamalah-audio-el" preload="metadata"></audio>
   </aside>
 
   <!-- Fullscreen Synced Quran View (1:1 Port of LyricsFlow main/player.html + dybg + AeroUI + AML Physics) -->
@@ -848,7 +928,7 @@ export function renderLayout(props: LayoutProps): string {
   </section>
 
   <!-- Bootstrap JSON Data for Instant Client Hydration -->
-  <script id="kalamalah-bootstrap" type="application/json">${JSON.stringify(clientCatalogBootstrap)}</script>
+  <script id="kalamalah-bootstrap" type="application/json">${safeJsonForScript(clientCatalogBootstrap)}</script>
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>`;

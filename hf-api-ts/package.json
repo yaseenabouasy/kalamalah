@@ -1,0 +1,17 @@
+{
+  "name": "kalamalah-api",
+  "version": "2.0.0",
+  "description": "Open, public Kalamalah Quran REST API in TypeScript (Hono + Bun) for Hugging Face Spaces",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "hono": "^4.7.4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.8.2"
+  }
+}

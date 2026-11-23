@@ -537,18 +537,31 @@ export const RECITERS_CATALOG: ReciterInfo[] = [
   },
 ];
 
-export function findReciter(idOrSlug: string | number): ReciterInfo {
+/**
+ * Strict catalog lookup. Returns null for unknown input so routes can 404
+ * instead of silently rendering a different reciter (which also minted
+ * unbounded cache keys).
+ */
+export function findReciterStrict(idOrSlug: string | number): ReciterInfo | null {
   const raw = String(idOrSlug).trim().toLowerCase();
+  if (!raw || raw.length > 64) return null;
   const num = Number(raw);
-  const byId = !Number.isNaN(num) ? RECITERS_CATALOG.find((r) => r.id === num) : undefined;
-  if (byId) return byId;
-  const bySlug = RECITERS_CATALOG.find(
-    (r) =>
-      r.slug.toLowerCase() === raw ||
-      r.kalamalahSlug?.toLowerCase() === raw ||
-      r.islamOnlineTimingSlug?.toLowerCase() === raw
+  if (!Number.isNaN(num)) {
+    return RECITERS_CATALOG.find((r) => r.id === num) ?? null;
+  }
+  return (
+    RECITERS_CATALOG.find(
+      (r) =>
+        r.slug.toLowerCase() === raw ||
+        r.kalamalahSlug?.toLowerCase() === raw ||
+        r.islamOnlineTimingSlug?.toLowerCase() === raw
+    ) ?? null
   );
-  return bySlug ?? RECITERS_CATALOG[0]!;
+}
+
+/** Lenient lookup kept for existing call sites: falls back to the first reciter. */
+export function findReciter(idOrSlug: string | number): ReciterInfo {
+  return findReciterStrict(idOrSlug) ?? RECITERS_CATALOG[0]!;
 }
 
 export function getSurahAudioUrl(reciter: ReciterInfo, surahNumber: number): string {

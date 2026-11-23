@@ -106,7 +106,7 @@ export function initWordMeaningPopover(player: QuranPlayerController): void {
     }
 
     // Do not open meaning popover if word is hidden in memorization test mode
-    if (wordEl.classList.contains('is-memo-hidden') && !wordEl.classList.contains('is-memo-revealed')) {
+    if (wordEl.classList.contains('memo-hidden-word') && !wordEl.classList.contains('memo-revealed-word')) {
       return;
     }
 

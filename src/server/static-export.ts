@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fetchJuzDetail, fetchMushafPage, fetchSurahDetail, TRANSLATION_EDITIONS, TAFSEER_BOOKS } from './kalamalah-api';
 import { RECITERS_CATALOG } from './reciters-catalog';
+import { resolveSurahTimings, type NormalizedSurahTimings } from './timings-service';
 import { renderHomePage } from './views/home';
 import { renderAsmaUlHusnaPage, renderDuasPage } from './views/islamic-pages';
 import {
@@ -44,6 +45,11 @@ async function runStaticExport(): Promise<void> {
 
   // 1. Copy public/ assets and main/ fallback fonts & icons
   await cp(PUBLIC_DIR, DIST_DIR, { recursive: true });
+  // Copy vendor/ files for static export (timing, fonts, AeroUI components)
+  const vendorSrc = join(ROOT, 'vendor');
+  if (existsSync(vendorSrc)) {
+    await cp(vendorSrc, join(DIST_DIR, 'vendor'), { recursive: true });
+  }
   if (existsSync(join(PUBLIC_DIR, 'favicon', 'site.webmanifest'))) {
     await cp(join(PUBLIC_DIR, 'favicon', 'site.webmanifest'), join(DIST_DIR, 'site.webmanifest'));
   }
@@ -112,30 +118,152 @@ async function runStaticExport(): Promise<void> {
       } catch {}
     }
 
-    // Batch surahs (6 at a time)
-    for (let s = 1; s <= 114; s += 6) {
-      const batch = Array.from({ length: Math.min(6, 115 - s) }, (_, i) => s + i);
-      await Promise.allSettled(
-        batch.map(async (id) => {
+    // Pre-fetch word timings for ALL reciters from ALL providers, organized by provider folder
+    // Structure: vendor/timing/{provider}/{reciterSlug}-{surah}.json
+    // Providers: kalamalah, qurancdn, islamonline, mp3quran
+    const providerConfigs = [
+      { key: 'kalamalah', getSlug: (r: typeof RECITERS_CATALOG[0]) => r.kalamalahSlug, hasWord: (r: typeof RECITERS_CATALOG[0]) => r.hasWordByWord && !!r.kalamalahSlug },
+      { key: 'qurancdn', getSlug: (r: typeof RECITERS_CATALOG[0]) => r.qurancdnId ? String(r.qurancdnId) : null, hasWord: (r: typeof RECITERS_CATALOG[0]) => r.hasWordByWord && !!r.qurancdnId },
+      { key: 'islamonline', getSlug: (r: typeof RECITERS_CATALOG[0]) => r.islamOnlineTimingSlug, hasWord: (r: typeof RECITERS_CATALOG[0]) => r.hasWordByWord && !!r.islamOnlineTimingSlug },
+      { key: 'mp3quran', getSlug: (r: typeof RECITERS_CATALOG[0]) => r.mp3QuranReadId ? String(r.mp3QuranReadId) : null, hasWord: (r: typeof RECITERS_CATALOG[0]) => r.hasWordByWord && !!r.mp3QuranReadId },
+    ] as const;
+
+    type ProviderKey = typeof providerConfigs[number]['key'];
+
+    // Manifest: { [provider]: { [reciterSlug]: { surahs: number[], source: string } } }
+    const manifest: Record<ProviderKey, Record<string, { surahs: number[]; source: string }>> = {
+      kalamalah: {},
+      qurancdn: {},
+      islamonline: {},
+      mp3quran: {},
+    };
+
+    // Track best provider per reciter+surah for static-timings.json
+    const bestTimings = new Map<number, { timings: NormalizedSurahTimings; provider: ProviderKey; reciterSlug: string }>();
+
+    console.log(`[Kalamalah Static] Starting multi-provider timing export...`);
+
+    for (const provider of providerConfigs) {
+      console.log(`[Kalamalah Static] === Provider: ${provider.key} ===`);
+      const providerDir = join(ROOT, 'vendor', 'timing', provider.key);
+      await mkdir(providerDir, { recursive: true });
+
+      // Find reciters that have this provider's word timing capability
+      const eligibleReciters = RECITERS_CATALOG.filter((r) => provider.hasWord(r));
+      console.log(`[Kalamalah Static] ${provider.key}: ${eligibleReciters.length} eligible reciters`);
+
+      for (const reciter of eligibleReciters) {
+        const providerSlug = provider.getSlug(reciter)!;
+        const reciterSurahs: number[] = [];
+
+        for (let s = 1; s <= 114; s++) {
+          try {
+            const timings = await resolveSurahTimings(reciter.slug, s);
+            if (timings && timings.ayahs.length > 0 && timings.mode === 'word') {
+              // Save to provider-specific file
+              const filename = `${reciter.slug}-${s}.json`;
+              await writeFile(join(providerDir, filename), JSON.stringify(timings), 'utf8');
+              reciterSurahs.push(s);
+
+              // Track best for combined static-timings.json (prefer qurancdn > islamonline > kalamalah > mp3quran)
+              const existing = bestTimings.get(s);
+              const providerPriority: Record<ProviderKey, number> = { qurancdn: 4, islamonline: 3, kalamalah: 2, mp3quran: 1 };
+              if (!existing || providerPriority[provider.key] > providerPriority[existing.provider]) {
+                bestTimings.set(s, { timings, provider: provider.key, reciterSlug: reciter.slug });
+              }
+            }
+            await new Promise((r) => setTimeout(r, 150));
+          } catch (err) {
+            console.warn(`[Kalamalah Static] ${provider.key}/${reciter.slug} surah ${s} failed:`, err);
+          }
+        }
+
+        if (reciterSurahs.length > 0) {
+          manifest[provider.key][reciter.slug] = { surahs: reciterSurahs, source: provider.key };
+          console.log(`[Kalamalah Static] ${provider.key}/${reciter.slug}: ${reciterSurahs.length}/114 surahs`);
+        }
+      }
+    }
+
+    // Write manifest
+    await writeFile(join(ROOT, 'vendor', 'timing', 'index.json'), JSON.stringify(manifest, null, 2), 'utf8');
+    console.log(`[Kalamalah Static] Wrote vendor/timing/index.json`);
+
+    // Build combined timingCache from best provider per surah
+    const timingCache = new Map<number, NormalizedSurahTimings>();
+    for (const [surahNum, entry] of bestTimings.entries()) {
+      timingCache.set(surahNum, entry.timings);
+    }
+    console.log(`[Kalamalah Static] Combined best timings: ${timingCache.size}/114 surahs`);
+
+    if (timingCache.size === 0) {
+      console.warn(`[Kalamalah Static] No word timings found from any provider!`);
+    }
+
+    let failures = 0;
+    const failedSlugs: string[] = [];
+    const recordFailure = (label: string, err: unknown) => {
+      failures++;
+      failedSlugs.push(label);
+      console.error(`[Kalamalah Static] ${label} failed:`, err);
+    };
+
+    // Batch surahs (3 at a time, with delay between items to avoid rate limits)
+    for (let s = 1; s <= 114; s += 3) {
+      const batch = Array.from({ length: Math.min(3, 115 - s) }, (_, i) => s + i);
+      for (const id of batch) {
+        try {
           const detail = await fetchSurahDetail(id);
-          await writeHtmlSlug(`surah-${id}`, renderSurahPage({ surahDetail: detail }));
-        })
+          const timings = timingCache.get(id) ?? null;
+          await writeHtmlSlug(`surah-${id}`, renderSurahPage({ surahDetail: detail, defaultTimings: timings }));
+          // Small delay to avoid rate limiting
+          await new Promise((r) => setTimeout(r, 300));
+        } catch (err) {
+          recordFailure(`surah-${id}`, err);
+        }
+      }
+    }
+
+    // Batch juzs (2 at a time, with delay)
+    for (let j = 1; j <= 30; j += 2) {
+      const batch = Array.from({ length: Math.min(2, 31 - j) }, (_, i) => j + i);
+      for (const id of batch) {
+        try {
+          const juzData = await fetchJuzDetail(id);
+          await writeHtmlSlug(`juz-${id}`, renderJuzPageView(juzData));
+          await new Promise((r) => setTimeout(r, 300));
+        } catch (err) {
+          recordFailure(`juz-${id}`, err);
+        }
+      }
+    }
+
+    // Deploying verse-less pages is worse than failing the build.
+    if (failures > 0) {
+      throw new Error(
+        `Static export incomplete: ${failures} page(s) failed (${failedSlugs.slice(0, 10).join(', ')})`
       );
     }
 
-    // Batch juzs (5 at a time)
-    for (let j = 1; j <= 30; j += 5) {
-      const batch = Array.from({ length: Math.min(5, 31 - j) }, (_, i) => j + i);
-      await Promise.allSettled(
-        batch.map(async (id) => {
-          const juzData = await fetchJuzDetail(id);
-          await writeHtmlSlug(`juz-${id}`, renderJuzPageView(juzData));
-        })
+    // 6. Write combined timing data for static mode SPA navigation (best provider per surah)
+    if (timingCache.size > 0) {
+      const combinedTimings: Record<number, NormalizedSurahTimings> = {};
+      for (const [surahNum, timings] of timingCache.entries()) {
+        combinedTimings[surahNum] = timings;
+      }
+      await writeFile(
+        join(DIST_DIR, 'static-timings.json'),
+        JSON.stringify(combinedTimings),
+        'utf8'
       );
+      console.log(`[Kalamalah Static] Wrote static-timings.json with ${timingCache.size} surahs`);
     }
   }
 
   console.log(`[Kalamalah Static] Export complete in ${DIST_DIR} (CNAME: ${CUSTOM_DOMAIN || 'none'}).`);
 }
 
-runStaticExport();
+runStaticExport().catch((err) => {
+  console.error('[Kalamalah Static] Export failed:', err);
+  process.exitCode = 1;
+});

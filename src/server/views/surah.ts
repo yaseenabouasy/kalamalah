@@ -2,12 +2,14 @@ import { getSurahMeta, type SurahDetail } from '../kalamalah-api';
 import { findReciter } from '../reciters-catalog';
 import { getMistakesForSurah, TAJWEED_RULES } from '../tajweed-mistakes-data';
 import { escapeHtml, renderIntervalsToArabicDigits, renderLayout } from './layout';
+import type { NormalizedSurahTimings } from '../timings-service';
 
 export interface SurahViewOptions {
   surahDetail: SurahDetail;
   fromAyah?: number;
   toAyah?: number;
   initialReciterSlug?: string;
+  defaultTimings?: NormalizedSurahTimings | null;
 }
 
 export function isSpokenQuranWord(token: string): boolean {
@@ -430,6 +432,25 @@ export function renderSurahPage(opts: SurahViewOptions): string {
         tr: a.translationText ?? '',
         taf: a.tafseerText ?? '',
       })),
+      defaultTimings: opts.defaultTimings
+        ? {
+            reciterSlug: opts.defaultTimings.reciterSlug,
+            surahNumber: opts.defaultTimings.surahNumber,
+            audioUrl: opts.defaultTimings.audioUrl,
+            mode: opts.defaultTimings.mode,
+            source: opts.defaultTimings.source,
+            ayahs: opts.defaultTimings.ayahs.map((a) => ({
+              ayah: a.ayah,
+              startMs: a.startMs,
+              endMs: a.endMs,
+              words: a.words?.map((w) => ({
+                wordIndex: w.wordIndex,
+                startMs: w.startMs,
+                endMs: w.endMs,
+              })) ?? [],
+            })),
+          }
+        : null,
     },
   });
 }

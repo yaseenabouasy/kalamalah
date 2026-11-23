@@ -1,4 +1,3 @@
-import gsap from 'gsap';
 // @ts-ignore - Local WebGL dybg engine
 import dybg from './dybg.js';
 import type { NormalizedSurahTimings } from '../server/timings-service';
@@ -49,6 +48,7 @@ export interface BootstrapCatalog {
     juz?: number;
     mushafPage?: number;
     ayahs?: { n: number; text: string; tr?: string; taf?: string }[];
+    defaultTimings?: NormalizedSurahTimings | null;
   };
 }
 
@@ -69,6 +69,7 @@ export class QuranPlayerController {
   private catalog: BootstrapCatalog;
   private scrollController: ScrollController | null = null;
   private animator = new AmlAyahAnimator();
+  private wordAudioEl: HTMLAudioElement | null = null;
 
   private currentSurahNumber = 1;
   private currentReciterSlug = 'haitham-al-dukhin';
@@ -135,6 +136,11 @@ export class QuranPlayerController {
     this.onReciterExternalChange = onReciterExternalChange;
     this.audioEl = document.getElementById('kalamalah-audio-el') as HTMLAudioElement;
 
+    // Word audio element for individual word playback
+    this.wordAudioEl = new Audio();
+    this.wordAudioEl.preload = 'auto';
+    this.wordAudioEl.crossOrigin = 'anonymous';
+
     const amlScrollEl = document.getElementById('aml-scroll-container');
     if (amlScrollEl) {
       this.scrollController = new ScrollController(amlScrollEl);
@@ -157,8 +163,9 @@ export class QuranPlayerController {
         this.fullscreenBgMode = savedBg;
       }
     } catch {}
-    this.initDybgCanvas();
-    this.applyFullscreenBgMode();
+    // Deferred: the dybg WebGL context and the 1920px background images are
+    // created on first fullscreen open (see applyFullscreenBgMode), not on every
+    // page load. The overlay is hidden at boot, so nothing needs them yet.
 
     let savedPlayback: {
       surahNumber?: number;
@@ -303,6 +310,85 @@ export class QuranPlayerController {
     }
   }
 
+  /**
+   * Play individual word audio from Quran.com CDN
+   * URL format: https://audio.qurancdn.com/wbw/{surah:03d}_{ayah:03d}_{word:03d}.mp3
+   * wordIdx is 0-based, we convert to 1-based for the URL
+   */
+  public playWordAudio(surahNum: number, ayahNum: number, wordIdx: number): void {
+    // Pause main surah audio
+    if (!this.audioEl.paused) {
+      this.audioEl.pause();
+    }
+
+    // Stop any currently playing word audio
+    if (this.wordAudioEl && !this.wordAudioEl.paused) {
+      this.wordAudioEl.pause();
+      this.wordAudioEl.currentTime = 0;
+    }
+
+    // Build word audio URL (1-based indexing for URL)
+    const wordNum = wordIdx + 1;
+    const url = `https://audio.qurancdn.com/wbw/${String(surahNum).padStart(3, '0')}_${String(ayahNum).padStart(3, '0')}_${String(wordNum).padStart(3, '0')}.mp3`;
+
+    this.wordAudioEl.src = url;
+    this.wordAudioEl.play().catch((err) => {
+      console.warn('[Kalamalah] Word audio playback failed:', err);
+    });
+
+    // Show word translation tooltip/popover
+    this.showWordTranslation(surahNum, ayahNum, wordIdx);
+  }
+
+  /** Show translation for a specific word in a tooltip/popover */
+  private showWordTranslation(surahNum: number, ayahNum: number, wordIdx: number): void {
+    const ayahData = this.currentAyahsData.find((a) => a.n === ayahNum);
+    if (!ayahData?.tr) return;
+
+    // Find the word translation - translations are usually space-separated
+    const trWords = ayahData.tr.trim().split(/\s+/);
+    if (wordIdx >= trWords.length) return;
+
+    const wordTr = trWords[wordIdx];
+    if (!wordTr) return;
+
+    // Create or update translation tooltip
+    let tooltip = document.getElementById('kalamalah-word-tooltip');
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.id = 'kalamalah-word-tooltip';
+      tooltip.style.cssText = `
+        position: fixed;
+        background: var(--bg-card, #1f1f1f);
+        color: var(--text-primary, #fff);
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        z-index: 10000;
+        pointer-events: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.1);
+        max-width: 280px;
+        transition: opacity 0.15s ease;
+      `;
+      document.body.appendChild(tooltip);
+    }
+    tooltip.textContent = wordTr;
+    tooltip.style.opacity = '1';
+
+    // Position near the clicked word (we'll need the click event for this)
+    // For now, show near the bottom of the screen
+    tooltip.style.bottom = '100px';
+    tooltip.style.left = '50%';
+    tooltip.style.transform = 'translateX(-50%)';
+
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      if (tooltip) tooltip.style.opacity = '0';
+    }, 3000);
+  }
+
   public setSurahAyahsData(ayahs: { n: number; text: string; tr?: string; taf?: string }[]): void {
     if (!Array.isArray(ayahs) || ayahs.length === 0) return;
     this.currentAyahsData = ayahs;
@@ -347,8 +433,13 @@ export class QuranPlayerController {
       Array.isArray(this.catalog.pageData?.ayahs) &&
       this.catalog.pageData.ayahs.length === surahMeta.ay;
 
+    // Check for pre-embedded word timings in the bootstrap data (static export)
+    const embeddedTimings = this.catalog.pageData?.defaultTimings as NormalizedSurahTimings | undefined;
+
     const [timingsRes, surahRes] = await Promise.all([
-      fetchTimingsApi(reciterSlug, surahNumber, this.catalog, abortCtrl.signal).catch(() => null),
+      embeddedTimings
+        ? Promise.resolve(embeddedTimings)
+        : fetchTimingsApi(reciterSlug, surahNumber, this.catalog, abortCtrl.signal).catch(() => null),
       pageMatchesSurah
         ? Promise.resolve({ ayahs: this.catalog.pageData!.ayahs! })
         : fetchSurahApi(surahNumber, 'en.sahih', 'ar.muyassar', this.catalog, abortCtrl.signal).catch(
@@ -836,6 +927,7 @@ export class QuranPlayerController {
     const isFsOpen = fsOverlay ? !fsOverlay.classList.contains('hidden') : false;
 
     if (this.fullscreenBgMode === 'dybg') {
+      if (!this.dybgInstance) this.initDybgCanvas();
       dybgEl?.classList.remove('hidden');
       islamicEl?.classList.add('hidden');
       nextBtn?.classList.add('hidden');
@@ -1166,7 +1258,7 @@ export class QuranPlayerController {
       updateOffsetLabel();
     });
 
-    // Authored Fullscreen Sheet Transition with GSAP
+    // Native Fullscreen Sheet Transition (Web Animations API)
     const fsOverlay = document.getElementById('aml-fullscreen-player');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -1176,11 +1268,16 @@ export class QuranPlayerController {
       document.body.classList.add('aml-fullscreen-open');
       this.applyFullscreenBgMode();
       if (!reducedMotion) {
-        gsap.fromTo(
-          fsOverlay,
-          { yPercent: 100, opacity: 0.6 },
-          { yPercent: 0, opacity: 1, duration: 0.44, ease: 'expo.out', clearProps: 'transform,opacity' }
-        );
+        fsOverlay.animate(
+          [
+            { transform: 'translateY(100%)', opacity: 0.6 },
+            { transform: 'translateY(0)', opacity: 1 }
+          ],
+          { duration: 440, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' }
+        ).finished.then(() => {
+          fsOverlay.style.transform = '';
+          fsOverlay.style.opacity = '';
+        });
       }
       setTimeout(() => {
         this.animator.forceAlignActiveLine();
@@ -1191,19 +1288,20 @@ export class QuranPlayerController {
       if (!fsOverlay) return;
       document.body.classList.remove('aml-fullscreen-open');
       this.stopIslamicBgRotator();
-      if (this.audioEl.paused || this.fullscreenBgMode !== 'dybg') {
-        this.dybgInstance?.pause?.();
-      }
+      // Always pause: the canvas is hidden, so leaving its rAF loop running
+      // only burns CPU/GPU (and battery) in the background.
+      this.dybgInstance?.pause?.();
       if (!reducedMotion) {
-        gsap.to(fsOverlay, {
-          yPercent: 100,
-          opacity: 0,
-          duration: 0.32,
-          ease: 'power3.in',
-          onComplete: () => {
-            fsOverlay.classList.add('hidden');
-            gsap.set(fsOverlay, { clearProps: 'transform,opacity' });
-          },
+        fsOverlay.animate(
+          [
+            { transform: 'translateY(0)', opacity: 1 },
+            { transform: 'translateY(100%)', opacity: 0 }
+          ],
+          { duration: 320, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' }
+        ).finished.then(() => {
+          fsOverlay.classList.add('hidden');
+          fsOverlay.style.transform = '';
+          fsOverlay.style.opacity = '';
         });
       } else {
         fsOverlay.classList.add('hidden');
@@ -1282,6 +1380,14 @@ export class QuranPlayerController {
       const wordEl = (e.target as HTMLElement | null)?.closest<HTMLElement>('.aml-word');
       if (wordEl) {
         e.stopPropagation();
+        const wordIdx = Number(wordEl.getAttribute('data-word-idx') || -1);
+        const lineEl = wordEl.closest<HTMLElement>('.aml-ayah-line');
+        const ayahNum = lineEl ? Number(lineEl.getAttribute('data-ayah') || 0) : 0;
+        if (wordIdx >= 0 && ayahNum > 0) {
+          this.playWordAudio(this.currentSurahNumber, ayahNum, wordIdx);
+          return;
+        }
+        // Fallback to seeking
         const ms = Number(wordEl.getAttribute('data-seek-ms') || 0);
         this.audioEl.currentTime = Math.max(0, (ms - this.effectiveSyncOffsetMs) / 1000);
         if (this.audioEl.paused) this.audioEl.play().catch(() => {});
@@ -1299,9 +1405,18 @@ export class QuranPlayerController {
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      // Support clicking a word in the reader (cards, متصل mushaf-flow, or mushaf page) to seek directly
+      // Support clicking a word in the reader (cards, متصل mushaf-flow, or mushaf page) to play word audio
       const quranWordEl = target.closest<HTMLElement>('.quran-word[data-seek-ms]:not(.memo-hidden-word)');
       if (quranWordEl) {
+        const surahEl = document.getElementById('surah-ayahs-wrapper');
+        const surahNum = surahEl ? Number(surahEl.getAttribute('data-surah-number') || 0) : this.currentSurahNumber;
+        const ayahNum = Number(quranWordEl.getAttribute('data-ayah') || 0);
+        const wordIdx = Number(quranWordEl.getAttribute('data-word-idx') || -1);
+        if (surahNum > 0 && ayahNum > 0 && wordIdx >= 0) {
+          this.playWordAudio(surahNum, ayahNum, wordIdx);
+          return;
+        }
+        // Fallback to seeking
         const ms = Number(quranWordEl.getAttribute('data-seek-ms') || 0);
         if (ms >= 0 && this.audioEl.src) {
           this.audioEl.currentTime = Math.max(0, (ms - this.effectiveSyncOffsetMs) / 1000);

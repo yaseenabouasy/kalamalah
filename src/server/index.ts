@@ -1,5 +1,10 @@
 import { Hono } from 'hono';
+import { compress } from 'hono/compress';
+import { secureHeaders } from 'hono/secure-headers';
 import { join, resolve, sep } from 'node:path';
+import { safeAudioUrl } from './audio-hosts';
+import { buildLlmsTxt, renderMarkdownForPath } from './markdown';
+import { zarazCspOrigins } from './zaraz';
 import {
   fetchJuzDetail,
   fetchMushafPage,
@@ -9,7 +14,7 @@ import {
   TRANSLATION_EDITIONS,
 } from './kalamalah-api';
 import { getOrPrerenderPage } from './prerender-cache';
-import { findReciter, getReciterPhotoUrl, getSurahAudioUrl, RECITERS_CATALOG } from './reciters-catalog';
+import { findReciter, findReciterStrict, getReciterPhotoUrl, getSurahAudioUrl, RECITERS_CATALOG } from './reciters-catalog';
 import { resolveSurahTimings } from './timings-service';
 import { renderHomePage } from './views/home';
 import {
@@ -29,6 +34,43 @@ import { renderReciterProfilePage, renderRecitersDirectoryPage } from './views/r
 import { renderSurahPage } from './views/surah';
 
 const app = new Hono();
+
+// Brotli/gzip for text responses (audio and images are skipped by content type).
+app.use('*', compress());
+
+// Zaraz (if loaded from an external origin) needs its origin in the CSP.
+const zarazOrigins = zarazCspOrigins();
+
+// Baseline security headers. COEP is disabled deliberately: this app loads
+// cross-origin audio and images that do not send CORP/CORS headers.
+// NOTE: script-src still allows 'unsafe-inline' for the early theme script in
+// layout.ts; moving it to /js/theme-init.js lets this be tightened to 'self'.
+app.use(
+  '*',
+  secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", ...zarazOrigins],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+      fontSrc: ["'self'", 'data:', 'https:'],
+      mediaSrc: ["'self'", 'blob:', 'https:'],
+      connectSrc: ["'self'", 'https:'],
+      frameSrc: ["'self'", ...zarazOrigins],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: 'cross-origin',
+    crossOriginOpenerPolicy: 'same-origin',
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    xContentTypeOptions: 'nosniff',
+    xFrameOptions: 'SAMEORIGIN',
+    strictTransportSecurity: 'max-age=31536000; includeSubDomains',
+  })
+);
 const PUBLIC_DIR = join(process.cwd(), 'public');
 const PUBLIC_FONTS_DIR = join(process.cwd(), 'public', 'fonts');
 const PUBLIC_ICONS_DIR = join(process.cwd(), 'public', 'icons');
@@ -102,6 +144,51 @@ async function sendPrerendered(
 }
 
 // ============================================================================
+// 0. MARKDOWN TWINS (`<page>.md`) + /llms.txt
+// ============================================================================
+// Registered as middleware so it wins regardless of route ordering. No HTML is
+// rendered or parsed: the Markdown is built from the same cached JSON the pages
+// use, so a warm hit is a single string concatenation.
+app.use('*', async (c, next) => {
+  const path = c.req.path;
+  if (!path.endsWith('.md')) {
+    await next();
+    return;
+  }
+
+  const base = path.slice(0, -3) || '/';
+  const doc = await renderMarkdownForPath(base, {
+    translation: c.req.query('translation'),
+    surah: c.req.query('surah'),
+  });
+  if (!doc) {
+    return c.text('Not found', 404, { 'Content-Type': 'text/plain; charset=utf-8' });
+  }
+
+  const etag = `"md-${new Bun.CryptoHasher('sha1').update(doc.markdown).digest('hex').slice(0, 16)}"`;
+  // compress() downgrades this to a weak tag, so compare with `W/` stripped.
+  const ifNoneMatch = c.req.header('if-none-match')?.replace(/^W\//, '');
+  if (ifNoneMatch && ifNoneMatch === etag) {
+    return new Response(null, { status: 304, headers: { ETag: etag } });
+  }
+
+  return c.body(doc.markdown, 200, {
+    'Content-Type': 'text/markdown; charset=utf-8',
+    'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+    ETag: etag,
+    'X-Robots-Tag': 'index, follow',
+    'X-Kalamalah-Format': 'markdown',
+  });
+});
+
+app.get('/llms.txt', (c) =>
+  c.text(buildLlmsTxt(), 200, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'public, max-age=3600',
+  })
+);
+
+// ============================================================================
 // 1. STATIC ASSETS (/favicon/*, /images/*, /css/*, /js/*, /site.webmanifest)
 // ============================================================================
 app.get('/site.webmanifest', async () => {
@@ -110,6 +197,31 @@ app.get('/site.webmanifest', async () => {
     headers: {
       'Content-Type': 'application/manifest+json; charset=utf-8',
       'Cache-Control': 'public, max-age=86400',
+    },
+  });
+});
+
+app.get('/manifest.webmanifest', async (c) => {
+  const file = Bun.file(join(PUBLIC_DIR, 'manifest.webmanifest'));
+  if (!(await file.exists())) return c.notFound();
+  return new Response(file, {
+    headers: {
+      'Content-Type': 'application/manifest+json; charset=utf-8',
+      'Cache-Control': 'public, max-age=86400',
+    },
+  });
+});
+
+// Service worker must be served from the origin root for full scope; keep it
+// uncached so a new worker is picked up on the next navigation.
+app.get('/sw.js', async (c) => {
+  const file = Bun.file(join(PUBLIC_DIR, 'sw.js'));
+  if (!(await file.exists())) return c.notFound();
+  return new Response(file, {
+    headers: {
+      'Content-Type': 'application/javascript; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Service-Worker-Allowed': '/',
     },
   });
 });
@@ -279,24 +391,39 @@ app.get('/api/reciters', (c) => {
 
 app.get('/api/timings/:reciter/:surah', async (c) => {
   const reciterParam = c.req.param('reciter');
-  const surahNum = Number(c.req.param('surah') || 1);
-  const timings = await resolveSurahTimings(reciterParam, surahNum);
+  const surahNum = Number(c.req.param('surah'));
+  const reciter = findReciterStrict(reciterParam);
+  if (!reciter) return c.json({ ok: false, error: 'unknown_reciter' }, 404);
+  if (!Number.isInteger(surahNum) || surahNum < 1 || surahNum > 114) {
+    return c.json({ ok: false, error: 'invalid_surah' }, 400);
+  }
+  const timings = await resolveSurahTimings(reciter.slug, surahNum);
+  // Only cache success for a day; transient resolution failures retry soon.
+  const cacheControl = timings.mode === 'none' ? 'public, max-age=60' : 'public, max-age=86400';
   return c.json(timings, 200, {
-    'Cache-Control': 'public, max-age=86400',
+    'Cache-Control': cacheControl,
   });
 });
 
 app.get('/api/surah/:id', async (c) => {
-  const surahId = Number(c.req.param('id') || 1);
-  const transEdition = c.req.query('translation') || 'en.sahih';
-  const tafEdition = c.req.query('tafseer') || 'ar.muyassar';
-  const detail = await fetchSurahDetail(surahId, transEdition, tafEdition);
-  const transMeta =
-    TRANSLATION_EDITIONS.find((e) => e.editionId === transEdition || e.code === transEdition) ??
-    TRANSLATION_EDITIONS[0]!;
-  const tafMeta =
-    TAFSEER_BOOKS.find((b) => b.editionId === tafEdition || String(b.id) === tafEdition) ??
-    TAFSEER_BOOKS[0]!;
+  const surahId = Number(c.req.param('id'));
+  if (!Number.isInteger(surahId) || surahId < 1 || surahId > 114) {
+    return c.json({ ok: false, error: 'invalid_surah' }, 400);
+  }
+  // Canonicalize editions before fetching so arbitrary query strings cannot
+  // mint unbounded upstream/cache entries.
+  const transQuery = c.req.query('translation') || 'en.sahih';
+  const tafQuery = c.req.query('tafseer') || 'ar.muyassar';
+  const transMeta = TRANSLATION_EDITIONS.find(
+    (e) => e.editionId === transQuery || e.code === transQuery
+  );
+  const tafMeta = TAFSEER_BOOKS.find(
+    (b) => b.editionId === tafQuery || String(b.id) === tafQuery
+  );
+  if (!transMeta || !tafMeta) {
+    return c.json({ ok: false, error: 'unknown_edition' }, 404);
+  }
+  const detail = await fetchSurahDetail(surahId, transMeta.editionId, tafMeta.editionId);
   return c.json({
     ok: true,
     meta: detail.meta,
@@ -319,38 +446,75 @@ app.get('/api/surah/:id', async (c) => {
 
 app.get('/api/download/:reciter/:surah', async (c) => {
   const reciterParam = c.req.param('reciter');
-  const surahNum = Math.max(1, Math.min(114, Number(c.req.param('surah') || 1)));
-  const reciter = findReciter(reciterParam);
+  const reciter = findReciterStrict(reciterParam);
+  if (!reciter) return c.json({ ok: false, error: 'unknown_reciter' }, 404);
+  const surahNum = Number(c.req.param('surah'));
+  if (!Number.isInteger(surahNum) || surahNum < 1 || surahNum > 114) {
+    return c.json({ ok: false, error: 'invalid_surah' }, 400);
+  }
   const surahMeta = getSurahMeta(surahNum);
   const timings = await resolveSurahTimings(reciter.slug, surahNum).catch(() => null);
-  const audioUrl = timings?.audioUrl || getSurahAudioUrl(reciter, surahNum);
+  const audioUrl = safeAudioUrl(timings?.audioUrl, getSurahAudioUrl(reciter, surahNum));
   const padded = String(surahNum).padStart(3, '0');
   const safeFileName = `Kalamalah-${padded}-${surahMeta.nameEn.replace(/[^a-zA-Z0-9_-]/g, '')}-${reciter.slug}.mp3`;
+  const range = c.req.header('range');
+  const ifRange = c.req.header('if-range');
+
+  // Bound only the wait for response headers. Once they arrive the clock is
+  // cleared, so a 40 MB surah streams to completion instead of being cut off.
+  const controller = new AbortController();
+  const headerTimer = setTimeout(() => controller.abort(), 15000);
 
   try {
     const upstream = await fetch(audioUrl, {
-      headers: { 'User-Agent': 'KalamalahPlayer/1.0' },
-      signal: AbortSignal.timeout(25000),
+      headers: {
+        'User-Agent': 'KalamalahPlayer/1.0',
+        ...(range ? { Range: range } : {}),
+        ...(ifRange ? { 'If-Range': ifRange } : {}),
+      },
+      signal: controller.signal,
     });
-    if (upstream.ok && upstream.body) {
+    clearTimeout(headerTimer);
+
+    if ((upstream.ok || upstream.status === 206) && upstream.body) {
+      const headers: Record<string, string> = {
+        'Content-Type': upstream.headers.get('content-type') || 'audio/mpeg',
+        'Content-Disposition': `attachment; filename="${safeFileName}"`,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=86400',
+      };
+      const contentLength = upstream.headers.get('content-length');
+      if (contentLength) headers['Content-Length'] = contentLength;
+      const contentRange = upstream.headers.get('content-range');
+      if (contentRange) headers['Content-Range'] = contentRange;
+
       return new Response(upstream.body, {
-        status: 200,
-        headers: {
-          'Content-Type': upstream.headers.get('content-type') || 'audio/mpeg',
-          'Content-Disposition': `attachment; filename="${safeFileName}"`,
-          'Cache-Control': 'public, max-age=86400',
-        },
+        status: upstream.status === 206 ? 206 : 200,
+        headers,
       });
     }
-  } catch {}
-  return c.redirect(audioUrl, 302);
+  } catch {
+    // Fall through to the hard failure below.
+  } finally {
+    clearTimeout(headerTimer);
+  }
+
+  // Never redirect to an unvalidated URL; fail hard instead of becoming an open redirect.
+  return c.text('Upstream audio unavailable', 502);
 });
 
 app.get('/api/tafseer/:bookId/:surah/:ayah', async (c) => {
-  const bookId = Number(c.req.param('bookId') || 1);
-  const surahNum = Number(c.req.param('surah') || 1);
-  const ayahNum = Number(c.req.param('ayah') || 1);
-  const book = TAFSEER_BOOKS.find((b) => b.id === bookId) ?? TAFSEER_BOOKS[0]!;
+  const bookId = Number(c.req.param('bookId'));
+  const surahNum = Number(c.req.param('surah'));
+  const ayahNum = Number(c.req.param('ayah'));
+  const book = TAFSEER_BOOKS.find((b) => b.id === bookId);
+  if (!book) return c.json({ ok: false, error: 'unknown_tafseer_book' }, 404);
+  if (
+    !Number.isInteger(surahNum) || surahNum < 1 || surahNum > 114 ||
+    !Number.isInteger(ayahNum) || ayahNum < 1
+  ) {
+    return c.json({ ok: false, error: 'invalid_reference' }, 400);
+  }
   const detail = await fetchSurahDetail(surahNum, 'en.sahih', book.editionId);
   const targetAyah = detail.ayahs.find((a) => a.numberInSurah === ayahNum) ?? detail.ayahs[0];
   return c.json({
@@ -438,9 +602,12 @@ app.get('/:slug', async (c) => {
   const viewRangeMatch = /^view-(\d+),from-(\d+),to-(\d+)$/i.exec(slug);
   if (viewRangeMatch) {
     const surahId = Number(viewRangeMatch[1]);
-    const fromAyah = Number(viewRangeMatch[2]);
-    const toAyah = Number(viewRangeMatch[3]);
     if (surahId >= 1 && surahId <= 114) {
+      // Clamp the range so the cache key space stays bounded and cannot be
+      // inflated with arbitrary X/Y values.
+      const ayahCount = getSurahMeta(surahId).ayahCount;
+      const fromAyah = Math.min(Math.max(1, Number(viewRangeMatch[2])), ayahCount);
+      const toAyah = Math.min(Math.max(fromAyah, Number(viewRangeMatch[3])), ayahCount);
       return sendPrerendered(c, `view-${surahId}-${fromAyah}-${toAyah}`, async () => {
         const detail = await fetchSurahDetail(surahId);
         return renderSurahPage({ surahDetail: detail, fromAyah, toAyah });
@@ -449,24 +616,26 @@ app.get('/:slug', async (c) => {
   }
 
   // 3) /reader-{surah}-{reciterSlugOrId}
-  const readerMatch = /^reader-(\d+)-([a-zA-Z0-9_-]+)$/i.exec(slug);
+  const readerMatch = /^reader-(\d+)-([a-zA-Z0-9_-]{1,64})$/i.exec(slug);
   if (readerMatch) {
     const surahId = Number(readerMatch[1]);
-    const reciterKey = readerMatch[2]!;
-    if (surahId >= 1 && surahId <= 114) {
-      return sendPrerendered(c, `reader-${surahId}-${reciterKey}`, async () => {
+    const reciter = findReciterStrict(readerMatch[2]!);
+    if (surahId >= 1 && surahId <= 114 && reciter) {
+      // Key on the canonical slug, never the raw request text.
+      return sendPrerendered(c, `reader-${surahId}-${reciter.slug}`, async () => {
         const detail = await fetchSurahDetail(surahId);
-        return renderSurahPage({ surahDetail: detail, initialReciterSlug: reciterKey });
+        return renderSurahPage({ surahDetail: detail, initialReciterSlug: reciter.slug });
       });
     }
   }
 
   // 4) /reciter-{idOrSlug}
-  const reciterMatch = /^reciter-([a-zA-Z0-9_-]+)$/i.exec(slug);
+  const reciterMatch = /^reciter-([a-zA-Z0-9_-]{1,64})$/i.exec(slug);
   if (reciterMatch) {
-    const reciterKey = reciterMatch[1]!;
-    return sendPrerendered(c, `reciter-${reciterKey}`, async () =>
-      renderReciterProfilePage(reciterKey)
+    const reciter = findReciterStrict(reciterMatch[1]!);
+    if (!reciter) return c.notFound();
+    return sendPrerendered(c, `reciter-${reciter.slug}`, async () =>
+      renderReciterProfilePage(reciter.slug)
     );
   }
 
@@ -494,13 +663,17 @@ app.get('/:slug', async (c) => {
     }
   }
 
-  // 7) /tafseer-{id}
+  // 7) /tafseer-{id}?surah=N
   const tafseerMatch = /^tafseer-(\d+)$/i.exec(slug);
   if (tafseerMatch) {
-    const tafseerId = Number(tafseerMatch[1]);
-    const surahQuery = Number(c.req.query('surah') || 1);
-    return sendPrerendered(c, `tafseer-${tafseerId}-s${surahQuery}`, async () =>
-      renderTafseerPageView({ bookId: tafseerId, surahNumber: surahQuery })
+    const book = TAFSEER_BOOKS.find((b) => b.id === Number(tafseerMatch[1]));
+    if (!book) return c.notFound();
+    const surahQuery = Number(c.req.query('surah') ?? 1);
+    if (!Number.isInteger(surahQuery) || surahQuery < 1 || surahQuery > 114) {
+      return c.notFound();
+    }
+    return sendPrerendered(c, `tafseer-${book.id}-s${surahQuery}`, async () =>
+      renderTafseerPageView({ bookId: book.id, surahNumber: surahQuery })
     );
   }
 
@@ -508,10 +681,18 @@ app.get('/:slug', async (c) => {
   const singleTafseerMatch = /^t-(\d+)-(\d+)-(\d+)$/i.exec(slug);
   if (singleTafseerMatch) {
     const surahNum = Number(singleTafseerMatch[1]);
-    const tafseerId = Number(singleTafseerMatch[2]);
+    const book = TAFSEER_BOOKS.find((b) => b.id === Number(singleTafseerMatch[2]));
     const ayahNum = Number(singleTafseerMatch[3]);
-    return sendPrerendered(c, `t-${surahNum}-${tafseerId}-${ayahNum}`, async () =>
-      renderTafseerPageView({ bookId: tafseerId, surahNumber: surahNum, ayahNumber: ayahNum })
+    if (
+      !book ||
+      !Number.isInteger(surahNum) || surahNum < 1 || surahNum > 114 ||
+      !Number.isInteger(ayahNum) || ayahNum < 1 ||
+      ayahNum > getSurahMeta(surahNum).ayahCount
+    ) {
+      return c.notFound();
+    }
+    return sendPrerendered(c, `t-${surahNum}-${book.id}-${ayahNum}`, async () =>
+      renderTafseerPageView({ bookId: book.id, surahNumber: surahNum, ayahNumber: ayahNum })
     );
   }
 
@@ -519,6 +700,10 @@ app.get('/:slug', async (c) => {
   const langMatch = /^language-([a-z]{2,5})$/i.exec(slug);
   if (langMatch) {
     const code = langMatch[1]!.toLowerCase();
+    // Allow-list known editions so arbitrary codes cannot mint cache keys.
+    const known =
+      code === 'ar' || TRANSLATION_EDITIONS.some((e) => e.code.toLowerCase() === code);
+    if (!known) return c.notFound();
     return sendPrerendered(c, `language-${code}`, async () => renderLanguagesPage(code));
   }
 
@@ -530,20 +715,34 @@ app.notFound((c) => {
   return c.html(renderNotFoundPage(c.req.path), 404);
 });
 
+// An upstream outage must surface as 502, not as a cached empty page.
+app.onError((err, c) => {
+  console.error('[Kalamalah] Unhandled route error:', err);
+  if (c.req.path.startsWith('/api/')) {
+    return c.json({ ok: false, error: 'upstream_unavailable' }, 502);
+  }
+  return c.text('Service temporarily unavailable', 502);
+});
+
 // Background Prerender Warm-up for instant 0ms response on key static routes
 async function warmUpPrerenderCache(): Promise<void> {
-  try {
-    await getOrPrerenderPage('home', async () => renderHomePage());
-    await getOrPrerenderPage('reciters-dir', async () => renderRecitersDirectoryPage());
-    await getOrPrerenderPage('tajweed-guide', async () => renderTajweedGuidePage());
-    for (const sId of [1, 18, 36, 55, 67, 112]) {
-      await getOrPrerenderPage(`surah-${sId}`, async () => {
-        const detail = await fetchSurahDetail(sId);
-        return renderSurahPage({ surahDetail: detail });
-      });
+  // Warm each entry independently: one upstream failure must not skip the rest.
+  const warm = async (key: string, render: () => Promise<string>) => {
+    try {
+      await getOrPrerenderPage(key, render);
+    } catch (err) {
+      console.warn(`[Kalamalah] Warm-up failed for ${key}:`, err);
     }
-  } catch {
-    // Non-blocking warm-up
+  };
+
+  await warm('home', async () => renderHomePage());
+  await warm('reciters-dir', async () => renderRecitersDirectoryPage());
+  await warm('tajweed-guide', async () => renderTajweedGuidePage());
+  for (const sId of [1, 18, 36, 55, 67, 112]) {
+    await warm(`surah-${sId}`, async () => {
+      const detail = await fetchSurahDetail(sId);
+      return renderSurahPage({ surahDetail: detail });
+    });
   }
 }
 

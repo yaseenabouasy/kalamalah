@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
 interface CacheEntry {
@@ -8,7 +9,8 @@ interface CacheEntry {
 }
 
 const memoryPrerenderCache = new Map<string, CacheEntry>();
-const PRERENDER_CACHE_VERSION = 'v12';
+const MAX_MEMORY_ENTRIES = 600;
+const PRERENDER_CACHE_VERSION = 'v14';
 const CACHE_DIR = join(process.cwd(), '.cache', 'prerender', PRERENDER_CACHE_VERSION);
 let diskReady = false;
 
@@ -22,9 +24,13 @@ async function ensureDiskCacheDir(): Promise<void> {
   }
 }
 
+/**
+ * Cache key -> filename. Hashed so that keys which differ only by
+ * punctuation (`view-1,from-2` vs `view-1_from-2`) cannot collide.
+ */
 function sanitizeKeyToFile(key: string): string {
-  const safe = key.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/^_+/, '') || 'index';
-  return join(CACHE_DIR, `${safe}.html`);
+  const hash = createHash('sha1').update(key).digest('hex').slice(0, 16);
+  return join(CACHE_DIR, `${hash}.html`);
 }
 
 function computeWeakEtag(html: string): string {
@@ -32,10 +38,23 @@ function computeWeakEtag(html: string): string {
   return `W/"${hash}-${html.length.toString(36)}"`;
 }
 
+/** Insert and mark as most-recently-used, evicting oldest entries past the cap. */
+function remember(key: string, entry: CacheEntry): void {
+  memoryPrerenderCache.delete(key);
+  memoryPrerenderCache.set(key, entry);
+  while (memoryPrerenderCache.size > MAX_MEMORY_ENTRIES) {
+    const oldest = memoryPrerenderCache.keys().next().value;
+    if (oldest === undefined) break;
+    memoryPrerenderCache.delete(oldest);
+  }
+}
+
 /**
  * Hybrid Server Prerender Cache:
  * - Serves pre-rendered immutable pages (Surahs, Juzs, Reciters, Mushaf pages, etc.) from RAM (<0.2ms) or Disk (.cache/prerender).
  * - If not yet prerendered, renders via `renderFn()`, stores in RAM + Disk, and returns with ETag + Cache-Control headers.
+ * - Both layers honour `ttlMs`; the disk layer uses the file mtime so stale
+ *   entries are re-rendered instead of served forever.
  */
 export async function getOrPrerenderPage(
   routeKey: string,
@@ -45,6 +64,7 @@ export async function getOrPrerenderPage(
   const now = Date.now();
   const mem = memoryPrerenderCache.get(routeKey);
   if (mem && now - mem.createdAt < ttlMs) {
+    remember(routeKey, mem);
     return { html: mem.html, etag: mem.etag, cacheHit: 'MEMORY' };
   }
 
@@ -52,19 +72,22 @@ export async function getOrPrerenderPage(
   const filePath = sanitizeKeyToFile(routeKey);
 
   try {
-    const diskHtml = await readFile(filePath, 'utf8');
-    if (diskHtml && diskHtml.length > 100) {
-      const etag = computeWeakEtag(diskHtml);
-      memoryPrerenderCache.set(routeKey, { html: diskHtml, etag, createdAt: now });
-      return { html: diskHtml, etag, cacheHit: 'DISK' };
+    const info = await stat(filePath);
+    if (now - info.mtimeMs < ttlMs) {
+      const diskHtml = await readFile(filePath, 'utf8');
+      if (diskHtml && diskHtml.length > 100) {
+        const etag = computeWeakEtag(diskHtml);
+        remember(routeKey, { html: diskHtml, etag, createdAt: now });
+        return { html: diskHtml, etag, cacheHit: 'DISK' };
+      }
     }
   } catch {
-    // Disk cache miss
+    // Disk cache miss or expired entry
   }
 
   const html = await renderFn();
   const etag = computeWeakEtag(html);
-  memoryPrerenderCache.set(routeKey, { html, etag, createdAt: now });
+  remember(routeKey, { html, etag, createdAt: now });
 
   // Persist asynchronously to disk
   writeFile(filePath, html, 'utf8').catch(() => {});

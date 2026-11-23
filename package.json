@@ -11,10 +11,10 @@
     "build:static": "bun run build:client && bun run src/server/static-export.ts",
     "build": "bun run build:client",
     "start": "bun run src/server/index.ts",
-    "prerender": "bun run src/server/prerender-cli.ts"
+    "prerender": "bun run src/server/prerender-cli.ts",
+    "translate:ui": "node scripts/translate-ui.js"
   },
   "dependencies": {
-    "gsap": "^3.12.7",
     "hono": "^4.7.4"
   },
   "devDependencies": {
