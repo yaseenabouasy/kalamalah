@@ -10,3 +10,29 @@ dist/
 /non-round-logo.png
 pnpm-lock.yaml
 /scripts/translate-ui.js
+
+# Build artifacts & local files
+/payload-dumper-go_2.1.0_windows_amd64_avx2.tar.gz
+/payload-dumper-go_2.1.0_windows_amd64_avx2.tar/
+/offsets.json
+/The_Hidden_Toggle*.mp3
+/hf-api-source/
+/hf-api-ts/
+
+# Electron build output
+/electron/dist/
+/electron/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
