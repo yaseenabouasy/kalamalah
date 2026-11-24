@@ -34,8 +34,14 @@ jobs:
         working-directory: ./electron
 
       - name: Build Electron App
-        run: bun run build:${{ matrix.os == 'macos-latest' && 'mac' || matrix.os == 'windows-latest' && 'win' || 'linux' }}
-        working-directory: ./electron
+        run: |
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            npx electron-builder --mac --projectDir=electron --publish=never
+          elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+            npx electron-builder --win --projectDir=electron --publish=never
+          else
+            npx electron-builder --linux --projectDir=electron --publish=never
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Unsigned builds: skip certificate discovery and notarization.
