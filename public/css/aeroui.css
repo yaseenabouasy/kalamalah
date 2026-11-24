@@ -6,6 +6,16 @@
   --aero-primary: #ffffff;
   --aero-bg: #000000;
   --aero-fg: #ffffff;
+  --aero-focus-ring: rgba(255, 255, 255, 0.35);
+  --aero-disabled: rgba(235, 235, 245, 0.6);
+}
+
+html[data-theme="light"] {
+  --aero-primary: #171a1f;
+  --aero-bg: #ffffff;
+  --aero-fg: #171a1f;
+  --aero-focus-ring: rgba(23, 26, 31, 0.35);
+  --aero-disabled: rgba(28, 32, 38, 0.3);
 }
 
 *,
@@ -20,10 +30,10 @@
 .aero-player {
   --player-size: 68px;
   --player-icon: 34px;
-  --player-label: var(--aero-fg, #fff);
+  --player-label: var(--aero-fg);
   --player-tint: transparent;
   --player-pressed: var(--player-label);
-  --player-disabled: rgba(235, 235, 245, 0.6);
+  --player-disabled: var(--aero-disabled);
 
   display: inline-flex;
   align-items: center;
@@ -80,7 +90,7 @@
 /* Keyboard-only ring — never stuck on after a pointer press */
 .aero-player:not(.aero-player--pressed):focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 4px var(--aero-focus-ring);
 }
 
 .aero-player:disabled {
@@ -218,7 +228,7 @@
 
 /* Keyboard-only focus ring */
 .aero-elastic:not(.aero-elastic--dragging) .aero-elastic-track:focus-visible {
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 4px var(--aero-focus-ring);
 }
 
 /* Labels */
@@ -226,7 +236,7 @@
   flex: none;
   font-size: 13px;
   line-height: 1.2;
-  color: rgba(235, 235, 245, 0.6);
+  color: var(--aero-disabled);
   white-space: nowrap;
   transition: transform 0.3s var(--elastic-ease), color 0.2s ease;
   will-change: transform;
@@ -274,8 +284,8 @@
 /* Volume Slider (aero-volume) - matches elastic slider but horizontal only */
 .aero-volume {
   --volume-track: rgba(120, 120, 128, 0.32);
-  --volume-fill: var(--aero-primary, #fff);
-  --volume-thumb: #fff;
+  --volume-fill: var(--aero-primary);
+  --volume-thumb: var(--aero-fg);
   --volume-thumb-size: 14px;
   --volume-track-height: 4px;
 
@@ -322,7 +332,7 @@
 }
 
 .aero-volume-input:focus-visible {
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 4px var(--aero-focus-ring);
 }
 
 /* ========================================================================
@@ -378,10 +388,10 @@
 .aero-skip-btn {
   --skip-btn-size: 56px;
   --skip-btn-icon: 28px;
-  --skip-btn-label: var(--aero-fg, #fff);
+  --skip-btn-label: var(--aero-fg);
   --skip-btn-tint: transparent;
   --skip-btn-pressed: var(--skip-btn-label);
-  --skip-btn-disabled: rgba(235, 235, 245, 0.6);
+  --skip-btn-disabled: var(--aero-disabled);
 
   display: inline-flex;
   align-items: center;
@@ -438,7 +448,7 @@
 /* Keyboard-only ring — never stuck on after a pointer press */
 .aero-skip-btn:not(.aero-skip-btn--pressed):focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 4px var(--aero-focus-ring);
 }
 
 .aero-skip-btn:disabled {

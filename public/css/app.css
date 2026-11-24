@@ -212,6 +212,11 @@ html[data-theme="light"] {
   --overlay-shadow: 0 18px 44px rgba(28, 32, 38, 0.16);
   --shadow-lg: 0 16px 38px rgba(28, 32, 38, 0.14);
   color-scheme: light;
+
+  /* AeroUI Light Mode - buttons should be dark in light mode */
+  --aero-primary: #171a1f;
+  --aero-bg: #ffffff;
+  --aero-fg: #171a1f;
 }
 
 /* Reading Fonts: Uthmani (Primary), Kitab, Amiri, Nastaleeq (Last) */

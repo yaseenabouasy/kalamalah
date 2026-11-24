@@ -310,19 +310,58 @@ export async function fetchTimingsApi(
       if (res.ok) manifest = (await res.json()) as TimingManifest;
     } catch {}
 
-    // Try each provider in priority order
+    // FIRST: Try to find timings for the SPECIFIC requested reciter
+    // This prevents using another reciter's timings (e.g., Yasser Al-Dossari for all)
+    for (const provider of providerPriority) {
+      if (!manifest?.[provider]) continue;
+      // Check if the requested reciter exists in this provider
+      if (manifest[provider][reciterSlug]?.surahs?.includes(surahNumber)) {
+        try {
+          const res = await fetch(`/vendor/timing/${provider}/${reciterSlug}-${surahNumber}.json`, { signal, cache: 'force-cache' });
+          if (res.ok) {
+            const timings = (await res.json()) as NormalizedSurahTimings;
+            if (timings && timings.mode === 'word' && timings.ayahs.length > 0) {
+              return timings; // Already has correct reciterSlug
+            }
+          }
+        } catch {
+          // Fall through to other providers
+        }
+      }
+    }
+
+    // SECOND: Fallback - combined static-timings.json (generated at build time)
+    // This should also be specific to the reciter, but we'll try it
+    try {
+      const res = await fetch('/static-timings.json', { signal, cache: 'force-cache' });
+      if (res.ok) {
+        const allTimings = (await res.json()) as Record<number, NormalizedSurahTimings>;
+        const timings = allTimings[surahNumber];
+        if (timings && timings.mode === 'word' && timings.ayahs.length > 0) {
+          // Check if this timing matches the requested reciter
+          if (timings.reciterSlug === reciterSlug) {
+            return timings;
+          }
+        }
+      }
+    } catch {
+      // Fall through to external APIs
+    }
+
+    // THIRD: Only as LAST RESORT, try other reciters in the manifest
+    // This maintains backward compatibility but should rarely be needed
     for (const provider of providerPriority) {
       if (!manifest?.[provider]) continue;
 
-      // Find which reciter in this provider has this surah
       for (const [providerReciterSlug, info] of Object.entries(manifest[provider])) {
+        if (providerReciterSlug === reciterSlug) continue; // Already tried above
         if (info.surahs.includes(surahNumber)) {
           try {
             const res = await fetch(`/vendor/timing/${provider}/${providerReciterSlug}-${surahNumber}.json`, { signal, cache: 'force-cache' });
             if (res.ok) {
               const timings = (await res.json()) as NormalizedSurahTimings;
               if (timings && timings.mode === 'word' && timings.ayahs.length > 0) {
-                // Override reciterSlug to match requested one for display
+                console.warn(`[fetchTimingsApi] Using fallback timings from ${providerReciterSlug} for requested ${reciterSlug}`);
                 return { ...timings, reciterSlug };
               }
             }
@@ -331,20 +370,6 @@ export async function fetchTimingsApi(
           }
         }
       }
-    }
-
-    // Fallback: combined static-timings.json (generated at build time)
-    try {
-      const res = await fetch('/static-timings.json', { signal, cache: 'force-cache' });
-      if (res.ok) {
-        const allTimings = (await res.json()) as Record<number, NormalizedSurahTimings>;
-        const timings = allTimings[surahNumber];
-        if (timings && timings.mode === 'word' && timings.ayahs.length > 0) {
-          return { ...timings, reciterSlug };
-        }
-      }
-    } catch {
-      // Fall through to external APIs
     }
   }
 

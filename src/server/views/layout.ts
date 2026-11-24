@@ -941,7 +941,7 @@ export function renderLayout(props: LayoutProps): string {
             </div>
           </div>
 
-          <!-- Toolbar: mute / tajweed / cast / queue -->
+          <!-- Toolbar: mute / tajweed / cast -->
           <div class="aml-toolbar-row" dir="ltr">
             <button type="button" id="aml-mute-btn" class="aml-tool-btn" title="كتم صوت التلاوة" aria-label="كتم صوت التلاوة" aria-pressed="false">
               <svg class="icon-vol-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
@@ -954,10 +954,6 @@ export function renderLayout(props: LayoutProps): string {
 
             <button type="button" data-cast-btn class="aml-tool-btn" title="بث إلى جهاز" aria-label="بث إلى جهاز">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><path d="M2 12a9 9 0 0 1 8 8"/><path d="M2 16a5 5 0 0 1 4 4"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>
-            </button>
-
-            <button type="button" id="aml-queue-btn" class="aml-tool-btn" title="قائمة الآيات" aria-label="قائمة الآيات" aria-expanded="false" aria-controls="aml-queue-panel">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             </button>
           </div>
 
@@ -1008,17 +1004,6 @@ export function renderLayout(props: LayoutProps): string {
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Ayah queue (opened from the player toolbar) -->
-    <div id="aml-queue-panel" class="aml-queue-panel hidden" role="dialog" aria-modal="false" aria-label="قائمة الآيات">
-      <div class="aml-queue-head">
-        <span>قائمة الآيات</span>
-        <button type="button" id="aml-queue-close-btn" class="aml-queue-close" aria-label="إغلاق قائمة الآيات">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div id="aml-queue-list" class="aml-queue-list"></div>
     </div>
 
     <!-- Bottom-Left Subtle Hide-HUD Toggle (Low Opacity) -->
