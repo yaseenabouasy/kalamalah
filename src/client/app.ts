@@ -10,21 +10,6 @@ import {
   isStaticMode,
 } from './static-api';
 import { resolveStaticRouteIfNeeded } from './static-router';
-import { initSleepTimer } from './sleep-timer';
-import { initChangelogModal } from './changelog-modal';
-import { initAmbientMixer } from './ambient-mixer';
-import { initHifzTools } from './hifz-tools';
-import { initDualScreenMode } from './tv-display';
-import { initHijriCalendarBanner } from './hijri-calendar';
-import { initDebugOverlay } from './debug-overlay';
-import { checkForUpdates } from './version-check';
-import { initIosFullscreen } from './ios-fullscreen';
-import { initMediaSession } from './media-session';
-import { initCastController } from './cast-controller';
-import { initAyahCardGenerator } from './ayah-card';
-import { initAyahEmbedWidget } from './ayah-embed';
-import { initWindowControls } from './window-controls';
-import { initSettingsSheet } from './settings-sheet';
 // @ts-ignore - AeroUI components have no declaration files
 import { initPlayerButtons, setPlayerIcon } from './aeroui/components/player-button/player-button.js';
 // @ts-ignore
@@ -33,7 +18,9 @@ import { initElasticSliders } from './aeroui/components/elastic-slider/elastic-s
 import { initSkipLabels, playSkip } from './aeroui/components/skip-label/skip-label.js';
 // @ts-ignore
 import { initSkipButtons, setSkipIcon } from './aeroui/components/skip-button/skip-button.js';
-import { initZarazConsent, setZarazConsent, trackPageView } from './zaraz';
+
+// Lazy imports for heavy features (code splitting)
+import { preloadCriticalFeatures, initOnInteraction, LazyFeatures } from './lazy-imports.js';
 
 function parseBootstrapCatalog(): BootstrapCatalog {
   try {
@@ -1349,28 +1336,56 @@ document.addEventListener('DOMContentLoaded', async () => {
   if ('serviceWorker' in navigator) {
     void navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
+
+  // Preload critical lazy modules on first user interaction
+  let preloaded = false;
+  const preloadOnce = () => {
+    if (!preloaded) {
+      preloaded = true;
+      preloadCriticalFeatures();
+    }
+  };
+  ['click', 'keydown', 'touchstart'].forEach(evt => 
+    document.addEventListener(evt, preloadOnce, { once: true, passive: true })
+  );
+
+  // Initialize lightweight features immediately
   initSleepTimer();
   initChangelogModal();
-  initSettingsSheet();
-  initAmbientMixer();
-  initHifzTools();
-  initDualScreenMode();
-  initKeyboardShortcuts(player);
-  applyDeepLinkParams(player);
-  initDebugOverlay();
-  void checkForUpdates();
-  initIosFullscreen();
-  initMediaSession();
-  initCastController();
-  initAyahCardGenerator();
-  initAyahEmbedWidget();
-  initWindowControls();
 
-  // Initialize AeroUI components
+  // Lazy-load heavy features on demand (code splitting)
+  initOnInteraction('#open-settings-btn, [data-open-settings]', 'settingsSheet');
+  initOnInteraction('#ambient-toggle-btn, [data-ambient-toggle]', 'ambientMixer');
+  initOnInteraction('[data-hifz-toggle], #hifz-tools-toggle', 'hifzTools');
+  initOnInteraction('[data-tv-toggle], #dual-screen-toggle', 'tvDisplay');
+  initOnInteraction('[data-debug-toggle], #debug-toggle', 'debugOverlay');
+  initOnInteraction('[data-cast-btn], [data-cast-trigger]', 'castController');
+  initOnInteraction('[data-ayah-card-trigger], .ayah-card-btn', 'ayahCard');
+  initOnInteraction('[data-ayah-embed-trigger], .ayah-embed-btn', 'ayahEmbed');
+  initOnInteraction('[data-window-controls]', 'windowControls');
+  initOnInteraction('[data-media-session-toggle]', 'mediaSession');
+
+  // Initialize AeroUI components (lightweight)
   initPlayerButtons();
   initElasticSliders();
   initSkipLabels();
   // Expose AeroUI helpers globally for quran-player.ts
   (window as any).setPlayerIcon = setPlayerIcon;
   (window as any).playSkip = playSkip;
+
+  // Initialize features needed for initial render
+  initSettingsSheet(); // Needed for initial UI state
+  initAmbientMixer(); // Needed for background audio
+  initHifzTools(); // Lightweight
+  initDualScreenMode(); // Check for dual screen capability
+  initIosFullscreen(); // iOS PWA
+  initMediaSession(); // Media session API
+  initCastController(); // Cast availability check
+  initAyahCardGenerator(); // Card generator setup
+  initAyahEmbedWidget(); // Embed widget setup
+  initWindowControls(); // Window controls (Electron)
+  initKeyboardShortcuts(player);
+  applyDeepLinkParams(player);
+  initDebugOverlay();
+  void checkForUpdates();
 });
