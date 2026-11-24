@@ -1,20 +1,71 @@
 {
   "name": "kalamalah-electron",
   "version": "1.2.0",
+  "private": true,
+  "author": "Yaseen Abouasy <yaseen@example.com>",
   "description": "Kalamalah Quran Player Desktop Client (Electron)",
   "main": "main.js",
+  "homepage": "https://kalamalah.com",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yaseenabouasy/kalamalah.git"
+  },
+  "keywords": [
+    "quran",
+    "quran-player",
+    "islamic",
+    "electron",
+    "audio",
+    "quran-recitation"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "protocols": {
+    "name": "Kalamalah",
+    "schemes": ["kalamalah"]
+  },
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --publish=never",
     "build:mac": "electron-builder --mac --publish=never",
     "build:win": "electron-builder --win --publish=never",
     "build:linux": "electron-builder --linux --publish=never",
-    "release": "electron-builder --publish=always"
+    "release": "electron-builder --publish=always",
+    "pack": "electron-builder --dir --publish=never",
+    "clean": "rimraf dist",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "electron-log": "^5.1.0",
+    "electron-store": "^10.0.0",
+    "@xhayper/discord-rpc": "^4.0.1"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "rimraf": "^5.0.5"
   },
   "build": {
     "appId": "com.kalamalah.player",
     "productName": "Kalamalah Player",
     "copyright": "Copyright © 2026 Yaseen Abouasy",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "round-logo.png",
+      "build/**/*"
+    ],
+    "asar": true,
+    "npmRebuild": true,
+    "nodeGypRebuild": false,
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "icon": "round-logo.png",
     "mac": {
       "category": "public.app-category.music",
@@ -22,8 +73,17 @@
         { "target": "dmg", "arch": ["x64", "arm64"] },
         { "target": "zip", "arch": ["x64", "arm64"] }
       ],
-      "titleBarStyle": "hiddenInset",
-      "darkModeSupport": true
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "contents": [
+        { "x": 130, "y": 220, "type": "link", "path": "/Applications" },
+        { "x": 410, "y": 220, "type": "file" }
+      ],
+      "window": { "width": 540, "height": 380 }
     },
     "win": {
       "target": [
@@ -32,18 +92,47 @@
       ],
       "icon": "round-logo.png"
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Kalamalah Player",
+      "uninstallDisplayName": "Kalamalah Player",
+      "license": "LICENSE",
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-${arch}-portable.${ext}"
+    },
     "linux": {
       "target": [
         { "target": "AppImage", "arch": ["x64"] },
         { "target": "deb", "arch": ["x64"] }
       ],
-      "category": "AudioVideo"
+      "category": "AudioVideo",
+      "maintainer": "Yaseen Abouasy <yaseen@example.com>",
+      "synopsis": "Kalamalah Quran Player",
+      "desktop": {
+        "Name": "Kalamalah Player",
+        "Comment": "Quran Player with Recitation, Tafsir, and Tajweed",
+        "Categories": "AudioVideo;Audio;Player;"
+      }
     },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0"
+      ]
     },
     "publish": {
       "provider": "github",
@@ -53,6 +142,7 @@
   },
   "devDependencies": {
     "electron": "^33.2.0",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "rimraf": "^5.0.5"
   }
 }

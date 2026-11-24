@@ -3940,6 +3940,22 @@ html[data-theme="light"] .surah-listen-hero-title strong {
   transform: scale(0.95);
 }
 
+/* Skip glyph containers (inline SVG fallback; AeroUI CSS is not loaded) */
+.aero-skip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: currentColor;
+}
+
+.aero-skip svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .qp-repeat-badge {
   position: absolute;
   top: 2px;

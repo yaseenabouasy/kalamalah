@@ -593,6 +593,13 @@
 .NowBarControls .aero-skip {
   --skip-size: 36px;
   color: #ffffff;
+  width: var(--skip-size);
+  height: var(--skip-size);
+}
+
+.NowBarControls .aero-skip svg {
+  width: 100%;
+  height: 100%;
 }
 
 .playback-control.repeat img {

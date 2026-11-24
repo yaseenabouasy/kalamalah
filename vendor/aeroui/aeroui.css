@@ -1,0 +1,16 @@
+/* AeroUI — self-hosted subset (only the components this app uses) */
+@import url('./components/elastic-slider/elastic-slider.css');
+@import url('./components/player-button/player-button.css');
+@import url('./components/skip-label/skip-label.css');
+
+:root {
+  --aero-primary: #ffffff;
+  --aero-bg: #000000;
+  --aero-fg: #ffffff;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}

@@ -10,6 +10,7 @@ import {
   fetchTimingsApi,
   getAvatarProxyOrDirectUrl,
   getDownloadUrl,
+  getReciterStaticAudioUrl,
 } from './static-api';
 
 export interface BootstrapCatalog {
@@ -460,8 +461,7 @@ export class QuranPlayerController {
 
     this.currentTimings = timingsRes;
     const audioUrl =
-      timingsRes?.audioUrl ||
-      `${reciterMeta.audioBase}/${String(surahNumber).padStart(3, '0')}.mp3`;
+      timingsRes?.audioUrl || getReciterStaticAudioUrl(reciterMeta, surahNumber);
 
     if (this.audioEl.src !== audioUrl) {
       this.audioEl.src = audioUrl;
