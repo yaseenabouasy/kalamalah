@@ -754,18 +754,14 @@ export function renderLayout(props: LayoutProps): string {
           <img id="qp-repeat-icon" src="/icons/repeat.svg" alt="Repeat" width="20" height="20" />
         </button>
 
-        <button type="button" id="qp-prev-ayah-btn" class="qp-ctrl-btn aero-player" title="الآية السابقة" aria-label="الآية السابقة">
-          <span class="aero-skip" data-direction="backward" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 4 L11 12 L19 20 Z M11 4 L3 12 L11 20 Z"/></svg></span>
-        </button>
+        <button type="button" id="qp-prev-ayah-btn" class="qp-ctrl-btn aero-skip-btn" data-direction="backward" title="الآية السابقة" aria-label="الآية السابقة"></button>
 
         <button type="button" id="qp-play-toggle-btn" class="qp-play-main-btn aero-player" title="تشغيل / إيقاف مؤقت" aria-label="تشغيل">
           <svg class="icon-play" width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></svg>
           <svg class="icon-pause hidden" width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z"/></svg>
         </button>
 
-        <button type="button" id="qp-next-ayah-btn" class="qp-ctrl-btn aero-player" title="الآية التالية" aria-label="الآية التالية">
-          <span class="aero-skip" data-direction="forward" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 4 L13 12 L5 20 Z M13 4 L21 12 L13 20 Z"/></svg></span>
-        </button>
+        <button type="button" id="qp-next-ayah-btn" class="qp-ctrl-btn aero-skip-btn" data-direction="forward" title="الآية التالية" aria-label="الآية التالية"></button>
 
         <button type="button" id="qp-speed-btn" class="qp-ctrl-btn speed-pill" title="سرعة التلاوة">1x</button>
       </div>
@@ -916,10 +912,8 @@ export function renderLayout(props: LayoutProps): string {
           <div class="NowBarControls" dir="ltr">
             <button type="button" id="aml-speed-cycle-btn" class="playback-control speed-txt" title="سرعة التلاوة">1x</button>
 
-            <!-- Previous: AeroUI player button with backward skip label -->
-            <button type="button" id="aml-prev-btn" class="aero-player" aria-label="الآية السابقة" data-interval="0.1">
-              <span class="aero-skip" data-direction="backward"></span>
-            </button>
+            <!-- Previous: AeroUI skip button (backward) -->
+            <button type="button" id="aml-prev-btn" class="aero-skip-btn" data-direction="backward" aria-label="الآية السابقة" data-interval="0.1"></button>
 
             <!-- Play/Pause: AeroUI player button with icon swap -->
             <button type="button" id="aml-play-btn" class="aero-player aero-player--circle" aria-label="تشغيل" data-interval="0.1">
@@ -928,10 +922,8 @@ export function renderLayout(props: LayoutProps): string {
               </span>
             </button>
 
-            <!-- Next: AeroUI player button with forward skip label -->
-            <button type="button" id="aml-next-btn" class="aero-player" aria-label="الآية التالية" data-interval="0.1">
-              <span class="aero-skip" data-direction="forward"></span>
-            </button>
+            <!-- Next: AeroUI skip button (forward) -->
+            <button type="button" id="aml-next-btn" class="aero-skip-btn" data-direction="forward" aria-label="الآية التالية" data-interval="0.1"></button>
 
             <button type="button" id="aml-more-btn" class="playback-control more-trigger" title="خيارات إضافية" aria-label="خيارات إضافية" aria-expanded="false" aria-controls="aml-more-panel">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>

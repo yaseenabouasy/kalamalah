@@ -40,7 +40,22 @@ async function writeHtmlSlug(slugPath: string, html: string): Promise<void> {
 
 async function runStaticExport(): Promise<void> {
   console.log('[Kalamalah Static] Preparing dist/ directory...');
-  await rm(DIST_DIR, { recursive: true, force: true });
+  // Windows: rm can fail with EBUSY if a process still holds a handle.
+  // Try to rename the old dist directory first, then create a fresh one.
+  const oldDist = join(ROOT, 'dist_old_' + Date.now());
+  try {
+    await rm(DIST_DIR, { recursive: true, force: true });
+  } catch (e: any) {
+    if (e.code === 'EBUSY') {
+      try {
+        await import('node:fs/promises').then(m => m.rename(DIST_DIR, oldDist));
+      } catch {
+        // Ignore rename errors, we'll try to create the new dir anyway
+      }
+    } else {
+      throw e;
+    }
+  }
   await mkdir(DIST_DIR, { recursive: true });
 
   // 1. Copy public/ assets and main/ fallback fonts & icons

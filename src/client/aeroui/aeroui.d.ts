@@ -80,3 +80,27 @@ export function skipFrame(size: number, progress: number, linear: boolean): {
   leftOpacity: number;
   rightOpacity: number;
 };
+
+// Skip Button
+export interface SkipButtonInstance {
+  el: HTMLElement;
+  label: HTMLElement;
+  held: boolean;
+  downT: number;
+  timer: ReturnType<typeof setInterval> | null;
+  hideT: ReturnType<typeof setTimeout> | null;
+  _releaseT: ReturnType<typeof setTimeout> | null;
+  lastEnd: number;
+  _swap: Animation | null;
+  _mo: MutationObserver | null;
+}
+
+export function initSkipButtons(root?: Document | HTMLElement): void;
+export function initSkipButton(el: HTMLElement): SkipButtonInstance;
+
+export const SKIP_ICONS: {
+  forward: string;
+  backward: string;
+};
+
+export function setSkipIcon(el: HTMLElement, name: 'forward' | 'backward'): void;

@@ -31,6 +31,8 @@ import { initPlayerButtons, setPlayerIcon } from './aeroui/components/player-but
 import { initElasticSliders } from './aeroui/components/elastic-slider/elastic-slider.js';
 // @ts-ignore
 import { initSkipLabels, playSkip } from './aeroui/components/skip-label/skip-label.js';
+// @ts-ignore
+import { initSkipButtons, setSkipIcon } from './aeroui/components/skip-button/skip-button.js';
 import { initZarazConsent, setZarazConsent, trackPageView } from './zaraz';
 
 function parseBootstrapCatalog(): BootstrapCatalog {

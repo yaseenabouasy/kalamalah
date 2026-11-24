@@ -371,3 +371,86 @@
 .aero-progress--sm {
   --progress-height: 2px;
 }
+
+/* ========================================================================
+   Skip Button (aero-skip-btn) — for next/previous controls
+   ======================================================================== */
+.aero-skip-btn {
+  --skip-btn-size: 56px;
+  --skip-btn-icon: 28px;
+  --skip-btn-label: var(--aero-fg, #fff);
+  --skip-btn-tint: transparent;
+  --skip-btn-pressed: var(--skip-btn-label);
+  --skip-btn-disabled: rgba(235, 235, 245, 0.6);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--skip-btn-size);
+  height: var(--skip-btn-size);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--skip-btn-label);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 0.35s ease,
+    color 0.3s ease;
+}
+
+/* Pressed state hook (scale is spring-driven from JS) */
+.aero-skip-btn--pressed {
+  /* transform: driven by JS spring */
+}
+
+.aero-skip-btn--circle {
+  background-color: var(--skip-btn-tint);
+  color: var(--skip-btn-pressed);
+  transition:
+    background-color 0.06s ease-out,
+    color 0.06s ease-out;
+}
+
+.aero-skip-btn-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* transform: driven by JS spring (inner 0.9 scaleEffect) */
+}
+
+.aero-skip-btn .aero-skip-btn-label {
+  color: inherit;
+}
+
+.aero-skip-btn-label > svg,
+.aero-skip-btn-label > img {
+  width: var(--skip-btn-icon);
+  height: var(--skip-btn-icon);
+  display: block;
+}
+
+/* Keyboard-only ring — never stuck on after a pointer press */
+.aero-skip-btn:not(.aero-skip-btn--pressed):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.35);
+}
+
+.aero-skip-btn:disabled {
+  color: var(--skip-btn-disabled);
+  background: transparent;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aero-skip-btn,
+  .aero-skip-btn-label {
+    transition: none;
+  }
+}
