@@ -100,14 +100,6 @@ if (process.platform === 'darwin') {
     document.head.appendChild(style);
   });
 } else {
-  // Windows/Linux: add a drag region at the top of the window
-  window.addEventListener('DOMContentLoaded', () => {
-    if (!document.getElementById('kalamalah-drag-region')) {
-      const drag = document.createElement('div');
-      drag.id = 'kalamalah-drag-region';
-      drag.style.cssText =
-        'position:fixed;inset:0 0 auto 0;height:32px;z-index:9998;-webkit-app-region:drag;';
-      document.body.appendChild(drag);
-    }
-  });
+  // Windows/Linux: the custom window controls (window-controls.ts) create their own
+  // drag region on the controls container. No extra drag region needed here.
 }
