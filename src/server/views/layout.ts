@@ -221,6 +221,55 @@ export function buildSitemapXml(baseUrl = 'https://kalamalah.com'): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${items}\n</urlset>\n`;
 }
 
+// Critical CSS (Above-the-Fold Only) - Inlined for instant render
+const criticalCSS = `
+/* Critical Variables & Reset */
+:root,html:not([data-theme]),html[data-theme="dark"]{--bg-primary:#12151a;--bg-elevated:#1a1f27;--bg-surface:#22272f;--bg-surface-hover:#2b323c;--bg-subtle:rgba(255,255,255,.05);--border:rgba(214,187,138,.14);--border-strong:rgba(214,187,138,.32);--text-primary:#f4efe4;--text-secondary:#aab4ac;--text-muted:#7f8a85;--gold:#d6bb8a;--gold-bright:#ecd6a8;--gold-soft:rgba(214,187,138,.14);--btn-gold-bg:#d6bb8a;--btn-gold-bg-hover:#ecd6a8;--btn-gold-fg:#090d16;--emerald:#93b3a0;--emerald-soft:rgba(147,179,160,.16);--cyan:#93b3a0;--cyan-soft:rgba(147,179,160,.16);--danger:#e0857a;--mushaf-paper:#171b21;--mushaf-frame:rgba(214,187,138,.24);--overlay-shadow:0 22px 54px rgba(0,0,0,.55);--shadow-lg:0 18px 42px rgba(0,0,0,.5);--player-bar-height:74px;--quran-font-scale:1;color-scheme:dark}
+html[data-theme="light"]{--bg-primary:#fbf9f3;--bg-elevated:#f3efe4;--bg-surface:#fff;--bg-surface-hover:#f4f0e5;--bg-subtle:rgba(28,32,38,.05);--border:rgba(28,32,38,.12);--border-strong:rgba(154,118,56,.34);--text-primary:#171a1f;--text-secondary:#474f4b;--text-muted:#6f7873;--gold:#9a7022;--gold-bright:#b68726;--gold-soft:rgba(154,118,56,.13);--btn-gold-bg:#c69735;--btn-gold-bg-hover:#b68726;--btn-gold-fg:#fff;--emerald:#3f6350;--emerald-soft:rgba(63,99,80,.13);--cyan:#3f6350;--cyan-soft:rgba(63,99,80,.13);--danger:#b24438;--mushaf-paper:#fff;--mushaf-frame:rgba(154,118,56,.28);--overlay-shadow:0 18px 44px rgba(28,32,38,.16);--shadow-lg:0 16px 38px rgba(28,32,38,.14);color-scheme:light}
+*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+::selection{background:rgba(212,175,95,.22);color:var(--text-primary)}
+html{scroll-behavior:smooth;font-family:'Tajawal','SF Arabic','SF Pro Display',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background-color:var(--bg-primary);color:var(--text-primary);caret-color:var(--gold);scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;line-height:1.6}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;height:auto;display:block}
+
+/* Critical Layout */
+.site-header{position:sticky;top:0;z-index:100;background:var(--bg-elevated);border-bottom:1px solid var(--border);backdrop-filter:saturate(180%) blur(20px)}
+.header-container{max-width:1400px;margin:0 auto;padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand-link{display:flex;align-items:center;gap:10px;color:var(--text-primary);font-weight:600;font-size:1.1rem}
+.brand-logo{width:32px;height:32px;border-radius:8px;object-fit:cover}
+.primary-nav{display:flex;gap:4px;padding:4px;background:var(--bg-surface);border-radius:999px}
+.nav-pill{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;font-size:.875rem;font-weight:500;color:var(--text-secondary);transition:color .2s ease,background .2s ease}
+.nav-pill:hover{color:var(--text-primary);background:var(--bg-subtle)}
+.nav-pill.active{color:var(--btn-gold-fg);background:var(--btn-gold-bg)}
+.nav-pill svg{flex-shrink:0}
+
+/* Player Bar Critical */
+.quran-player-bar{position:fixed;bottom:0;left:0;right:0;z-index:200;height:var(--player-bar-height);background:var(--bg-elevated);border-top:1px solid var(--border);backdrop-filter:saturate(180%) blur(20px);display:flex;align-items:center;justify-content:space-between;padding:0 16px;gap:16px}
+.quran-player-bar .qp-controls{display:flex;align-items:center;gap:8px}
+.qp-play-main-btn{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--btn-gold-bg);color:var(--btn-gold-fg);border:none;cursor:pointer;transition:transform .15s ease,background .2s ease}
+.qp-play-main-btn:hover{transform:scale(1.05);background:var(--btn-gold-bg-hover)}
+.qp-ctrl-btn{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--text-primary);border:none;cursor:pointer;transition:background .2s ease,color .2s ease}
+.qp-ctrl-btn:hover{background:var(--bg-subtle)}
+.aero-player,.aero-skip-btn{--player-size:48px;--player-icon:24px;--skip-btn-size:40px;--skip-btn-icon:20px;width:var(--player-size);height:var(--player-size);display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:transparent;color:var(--player-label);cursor:pointer}
+.aero-player:disabled,.aero-skip-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Main Content */
+#main-content{flex:1;padding-bottom:calc(var(--player-bar-height) + 24px);min-height:0}
+
+/* Animations */
+@keyframes qp-spin{to{transform:rotate(360deg)}}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion:reduce){*, *::before, *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Critical Font Faces (preloaded) */
+@font-face{font-family:'SF Pro Display';src:url('/fonts/SF-Pro-Display-Regular.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'SF Pro Display';src:url('/fonts/SF-Pro-Display-Bold.woff2') format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'SF Arabic';src:url('/fonts/sfarabic.woff2') format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFE}
+@font-face{font-family:'UthmanicHafs';src:url('/fonts/UthmanicHafs_V22.woff2') format('woff2');font-weight:400;font-display:swap}
+`;
+
 export function renderLayout(props: LayoutProps): string {
   const description =
     props.description ??
@@ -298,7 +347,7 @@ export function renderLayout(props: LayoutProps): string {
   <link rel="apple-touch-icon" sizes="152x152" href="/favicon/apple-touch-icon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-title" content="Kalamalah" />
-  <link rel="manifest" href="/favicon/site.webmanifest" />
+  <link rel="manifest" href="/manifest.json" />
 
   <!-- Open Graph & Social (WhatsApp, Telegram, Facebook, LinkedIn, iMessage, Discord fallback) -->
   <meta property="og:type" content="website" />
@@ -332,23 +381,39 @@ export function renderLayout(props: LayoutProps): string {
   <script id="discord:component-embed" type="application/json">${discordEmbedJson}</script>
   <script type="application/ld+json">${structuredDataJson}</script>
 
-  <!-- Local Fonts from /fonts (UthmanicHafs_V22 Primary, KFGQPCNastaleeq, SF Arabic, SF Pro Display) -->
-  <link rel="preload" href="/fonts/UthmanicHafs_V22.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="/fonts/sfarabic.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="/fonts/SF-Pro-Display-Regular.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="/fonts/SF-Pro-Display-Bold.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="/vendor/fonts/tajawal/Tajawal-Regular.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="/vendor/fonts/tajawal/Tajawal-Medium.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="/vendor/fonts/tajawal/Tajawal-Bold.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="/vendor/fonts/tajawal/Tajawal-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="/vendor/fonts/tajawal/tajawal.css" />
+  <!-- Resource Hints for Critical Origins -->
+  <link rel="preconnect" href="https://api.kalamalah.com" crossorigin />
+  <link rel="preconnect" href="https://api.qurancdn.com" crossorigin />
+  <link rel="dns-prefetch" href="https://cdn.islam-online.net" />
+  <link rel="dns-prefetch" href="https://mp3quran.net" />
+  <link rel="dns-prefetch" href="https://verses.quran.com" />
 
-  <!-- Application Stylesheets -->
-  <link rel="stylesheet" href="/css/searchable-dropdown.css" />
-  <link rel="stylesheet" href="/css/app.css" />
-  <link rel="stylesheet" href="/css/aeroui.css" />
-  <link rel="stylesheet" href="/css/fullscreen-player.css" />
-  <link rel="stylesheet" href="/css/settings-sheet.css" />
+  <!-- Critical Font Preloads (Only Above-the-Fold Fonts) -->
+  <link rel="preload" href="/fonts/UthmanicHafs_V22.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high" />
+  <link rel="preload" href="/fonts/sfarabic.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high" />
+  <link rel="preload" href="/fonts/SF-Pro-Display-Regular.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high" />
+  <link rel="preload" href="/fonts/SF-Pro-Display-Bold.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high" />
+
+  <!-- Critical CSS Inlined (Above-the-Fold Only) -->
+  <style>${criticalCSS}</style>
+
+  <!-- Non-Critical CSS: Load Asynchronously via media="print" trick -->
+  <link rel="stylesheet" href="/vendor/fonts/tajawal/tajawal.css" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="/css/searchable-dropdown.css" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="/css/app.css" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="/css/aeroui.css" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="/css/fullscreen-player.css" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="/css/settings-sheet.css" media="print" onload="this.media='all'" />
+
+  <!-- Fallback for browsers without onload support -->
+  <noscript>
+    <link rel="stylesheet" href="/vendor/fonts/tajawal/tajawal.css" />
+    <link rel="stylesheet" href="/css/searchable-dropdown.css" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="stylesheet" href="/css/aeroui.css" />
+    <link rel="stylesheet" href="/css/fullscreen-player.css" />
+    <link rel="stylesheet" href="/css/settings-sheet.css" />
+  </noscript>
 
   <!-- Early Theme Initialization (Auto from browser if unset, Dark/Light toggleable) -->
   <script>
@@ -1125,7 +1190,21 @@ export function renderLayout(props: LayoutProps): string {
 
   <!-- Bootstrap JSON Data for Instant Client Hydration -->
   <script id="kalamalah-bootstrap" type="application/json">${safeJsonForScript(clientCatalogBootstrap)}</script>
+
+  <!-- Module Preload for Critical Chunks (if code-split) -->
+  <link rel="modulepreload" href="/js/app.js" />
+
+  <!-- Main App (deferred module) -->
   <script type="module" src="/js/app.js"></script>
+
+  <!-- Service Worker Registration (offline support) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>`;
 }

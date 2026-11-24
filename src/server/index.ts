@@ -197,7 +197,7 @@ app.get('/site.webmanifest', async () => {
   return new Response(file, {
     headers: {
       'Content-Type': 'application/manifest+json; charset=utf-8',
-      'Cache-Control': 'public, max-age=86400',
+      'Cache-Control': 'public, max-age=31536000, immutable',
     },
   });
 });
@@ -208,7 +208,18 @@ app.get('/manifest.webmanifest', async (c) => {
   return new Response(file, {
     headers: {
       'Content-Type': 'application/manifest+json; charset=utf-8',
-      'Cache-Control': 'public, max-age=86400',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+  });
+});
+
+app.get('/manifest.json', async (c) => {
+  const file = Bun.file(join(PUBLIC_DIR, 'manifest.json'));
+  if (!(await file.exists())) return c.notFound();
+  return new Response(file, {
+    headers: {
+      'Content-Type': 'application/manifest+json; charset=utf-8',
+      'Cache-Control': 'public, max-age=31536000, immutable',
     },
   });
 });
@@ -235,7 +246,7 @@ app.get('/favicon/*', async (c) => {
     return new Response(file, {
       headers: {
         'Content-Type': getMimeType(safePath),
-        'Cache-Control': 'public, max-age=86400',
+        'Cache-Control': 'public, max-age=31536000, immutable',
       },
     });
   }
@@ -250,7 +261,7 @@ app.get('/images/*', async (c) => {
     return new Response(file, {
       headers: {
         'Content-Type': getMimeType(safePath),
-        'Cache-Control': 'public, max-age=86400',
+        'Cache-Control': 'public, max-age=31536000, immutable',
       },
     });
   }
@@ -265,7 +276,8 @@ app.get('/css/*', async (c) => {
     return new Response(file, {
       headers: {
         'Content-Type': 'text/css; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Content-Encoding': 'br', // Bun auto-compresses with compress() middleware
       },
     });
   }
@@ -280,7 +292,7 @@ app.get('/js/*', async (c) => {
     return new Response(file, {
       headers: {
         'Content-Type': 'application/javascript; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': 'public, max-age=31536000, immutable',
       },
     });
   }
@@ -295,13 +307,13 @@ app.get('/vendor/*', async (c) => {
   const file = Bun.file(safePath);
   if (await file.exists()) {
     const ext = safePath.slice(safePath.lastIndexOf('.')).toLowerCase();
-    const immutable = ['.woff2', '.woff', '.ttf', '.otf'].includes(ext);
+    const immutable = ['.woff2', '.woff', '.ttf', '.otf', '.css', '.js', '.json'].includes(ext);
     return new Response(file, {
       headers: {
         'Content-Type': getMimeType(safePath),
         'Cache-Control': immutable
           ? 'public, max-age=31536000, immutable'
-          : 'public, max-age=3600',
+          : 'public, max-age=31536000, immutable',
       },
     });
   }
