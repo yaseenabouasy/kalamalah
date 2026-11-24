@@ -12,7 +12,8 @@
     "build": "bun run build:client",
     "start": "bun run src/server/index.ts",
     "prerender": "bun run src/server/prerender-cli.ts",
-    "translate:ui": "node scripts/translate-ui.js"
+    "translate:ui": "node scripts/translate-ui.js",
+    "scan-i18n": "bun run scripts/scan-i18n.ts"
   },
   "dependencies": {
     "hono": "^4.7.4"
