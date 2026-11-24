@@ -330,25 +330,23 @@ export async function fetchTimingsApi(
       }
     }
 
-    // SECOND: Fallback - combined static-timings.json (generated at build time)
-    // This should also be specific to the reciter, but we'll try it
+    // SECOND: Fallback - per-reciter static-timings file (generated at build time)
+    // Fetch static-timings-{reciterSlug}.json
     try {
-      const res = await fetch('/static-timings.json', { signal, cache: 'force-cache' });
+      const res = await fetch(`/static-timings-${reciterSlug}.json`, { signal, cache: 'force-cache' });
       if (res.ok) {
         const allTimings = (await res.json()) as Record<number, NormalizedSurahTimings>;
         const timings = allTimings[surahNumber];
         if (timings && timings.mode === 'word' && timings.ayahs.length > 0) {
-          // Check if this timing matches the requested reciter
-          if (timings.reciterSlug === reciterSlug) {
-            return timings;
-          }
+          return timings;
         }
       }
     } catch {
-      // Fall through to external APIs
+      // Fall through to manifest-based fallback
     }
 
-    // THIRD: Only as LAST RESORT, try other reciters in the manifest
+    // THIRD: Fallback - check manifest for other reciters with this surah
+    // Only as LAST RESORT, try other reciters in the manifest
     // This maintains backward compatibility but should rarely be needed
     for (const provider of providerPriority) {
       if (!manifest?.[provider]) continue;

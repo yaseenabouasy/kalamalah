@@ -36,25 +36,35 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: ./electron
 
-      - name: Build Electron App
-        run: |
-          if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            bunx electron-builder --mac --projectDir=electron --publish=never
-          elif [ "${{ matrix.os }}" = "windows-latest" ]; then
-            bunx electron-builder --win --projectDir=electron --publish=never
-          else
-            bunx electron-builder --linux --projectDir=electron --publish=never
-          fi
+      - name: Build Electron App (macOS)
+        if: matrix.os == 'macos-latest'
+        run: bunx electron-builder --mac --projectDir=electron --publish=never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Unsigned builds: skip certificate discovery and notarization.
-          # macOS users may need to right-click > Open the first time.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CSC_LINK: ''
           CSC_KEY_PASSWORD: ''
           APPLE_ID: ''
           APPLE_ID_PASS: ''
           APPLE_TEAM_ID: ''
+
+      - name: Build Electron App (Windows)
+        if: matrix.os == 'windows-latest'
+        run: bunx electron-builder --win --projectDir=electron --publish=never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ''
+          CSC_KEY_PASSWORD: ''
+
+      - name: Build Electron App (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: bunx electron-builder --linux --projectDir=electron --publish=never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ''
+          CSC_KEY_PASSWORD: ''
 
       - name: Release
         uses: softprops/action-gh-release@v2
