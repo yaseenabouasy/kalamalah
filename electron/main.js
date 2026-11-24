@@ -1,28 +1,32 @@
 const {
   app,
   BrowserWindow,
-  Tray,
+  nativeTheme,
   Menu,
-  dialog,
-  shell,
+  Tray,
   ipcMain,
+  protocol,
+  shell,
+  dialog,
   globalShortcut,
   powerSaveBlocker,
 } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 const Store = require('electron-store');
 const { Client: DiscordClient } = require('@xhayper/discord-rpc');
 
 /**
- * IMPORTANT: electron-store v9+ is ESM-only and cannot be require()d here.
+ * electron-store v9+ is ESM-only and cannot be require()d here.
  * package.json pins ^8.x (CommonJS) for that reason.
  */
 
 const APP_URL = process.env.KALAMALAH_URL || 'https://kalamalah.com';
 const ICON_PATH = path.join(__dirname, 'round-logo.png');
 const IS_MAC = process.platform === 'darwin';
+const IS_WIN = process.platform === 'win32';
 const DISCORD_CLIENT_ID = process.env.KALAMALAH_DISCORD_CLIENT_ID || '';
 
 // ---------------------------------------------------------------------------
@@ -53,13 +57,212 @@ let powerSaveBlockerId = null;
 let mediaKeysRegistered = false;
 
 // ---------------------------------------------------------------------------
-// Discord Rich Presence
+// Discord Rich Presence (LyricsFlow-style)
 // ---------------------------------------------------------------------------
 let discordRPC = null;
+let isDiscordConnected = false;
+let currentActivity = null;
 let discordReconnectTimer = null;
+let lastActivityError = '';
+
+const artworkCache = new Map();
+let artworkFetchInFlight = null;
+
+const DISCORD_SHORT_TITLE_PADDING = '\u200B';
+const DISCORD_TRUNCATION_SUFFIX = '\u2026';
+const LOGO = 'https://kalamalah.com/images/icon.png';
+
+function truncateDiscordField(value, maxLength = 128) {
+  if (!value) return '';
+  const s = String(value).trim();
+  if (s.length <= maxLength) return s;
+  return s.slice(0, maxLength - 1) + DISCORD_TRUNCATION_SUFFIX;
+}
+
+function normalizeTitle(title, maxLength = 128) {
+  if (!title) return null;
+  const normalized = String(title).trim();
+  if (!normalized) return null;
+  const padded = normalized.length === 1 ? `${normalized}${DISCORD_SHORT_TITLE_PADDING}` : normalized;
+  return truncateDiscordField(padded, maxLength);
+}
+
+function upscaleArtworkTo900(url) {
+  if (!url || typeof url !== 'string') return null;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return null;
+  if (url.startsWith('blob:') || url.startsWith('data:')) return null;
+
+  let u = url;
+  if (u.includes('{w}x{h}')) {
+    return u.replace('{w}', '900').replace('{h}', '900').replace('{c}', '').replace('{f}', 'jpg');
+  }
+  if (u.includes('100x100')) return u.replace('100x100', '900x900');
+  if (u.includes('600x600')) return u.replace('600x600', '900x900');
+  if (u.includes('512x512')) return u.replace('512x512', '900x900');
+  return u;
+}
+
+async function fetchAndCacheArtwork900(trackId) {
+  if (!trackId || artworkCache.has(trackId) || artworkFetchInFlight === trackId) return;
+  artworkFetchInFlight = trackId;
+
+  try {
+    const res = await fetch(`https://itunes.apple.com/lookup?id=${trackId}`);
+    if (res.ok) {
+      const data = await res.json();
+      const rawUrl = data?.results?.[0]?.artworkUrl100;
+      if (rawUrl) {
+        artworkCache.set(trackId, upscaleArtworkTo900(rawUrl));
+        if (currentActivity && String(currentActivity.songId) === String(trackId)) {
+          setActivity(currentActivity);
+        }
+      }
+    }
+  } catch {
+  } finally {
+    if (artworkFetchInFlight === trackId) artworkFetchInFlight = null;
+  }
+}
+
+function sendRawSetActivity(rawActivity) {
+  if (typeof discordRPC?.request === 'function') {
+    return discordRPC.request('SET_ACTIVITY', {
+      pid: process.pid,
+      activity: rawActivity,
+    });
+  }
+  return Promise.reject(new Error('client.request is unavailable'));
+}
+
+let lastSentKey = '';
+let lastSentTime = 0;
+
+function setActivity(data) {
+  if (!DISCORD_CLIENT_ID) return;
+  currentActivity = data;
+  if (!discordRPC || !isDiscordConnected || !discordRPC.user) return;
+
+  if (!data || !data.title) {
+    lastSentKey = '';
+    discordRPC.user.clearActivity?.().catch(() => {});
+    return;
+  }
+
+  const posSec = Math.max(0, Math.floor(data.position || 0));
+  const durSec = Math.max(0, Math.floor(data.duration || 0));
+  const isPlaying = Boolean(data.isPlaying);
+  const trackId = data.songId ? String(data.songId).trim() : null;
+  const audioQuality = data.audioQuality ? String(data.audioQuality).trim() : '';
+  const hasTrackId = Boolean(trackId && /^\d+$/.test(trackId));
+
+  const nowMs = Date.now();
+  if (lastSentKey) {
+    try {
+      const prev = JSON.parse(lastSentKey);
+      const sameTrack = prev.trackId === (trackId || data.title) && prev.audioQuality === audioQuality;
+      const samePlayState = prev.isPlaying === isPlaying;
+
+      if (sameTrack && samePlayState) {
+        const elapsedRealSec = Math.floor((nowMs - lastSentTime) / 1000);
+        const expectedPosSec = prev.isPlaying ? prev.posSec + elapsedRealSec : prev.posSec;
+        const isSeekOrDrift = Math.abs(posSec - expectedPosSec) > 1;
+
+        if (!isSeekOrDrift) return;
+      }
+    } catch {}
+  }
+
+  lastSentKey = JSON.stringify({ trackId: trackId || data.title, audioQuality, isPlaying, posSec, durSec });
+  lastSentTime = nowMs;
+
+  const details = normalizeTitle(data.title, 128) || 'Quran Recitation';
+  const artistClean = data.reciter ? String(data.reciter).trim() : 'Unknown Reciter';
+  const surahClean = data.surah ? `Surah ${data.surah}` : '';
+  const stateText = artistClean + (surahClean ? ` • ${surahClean}` : '');
+  const state = truncateDiscordField(isPlaying ? stateText : `Paused • ${stateText}`, 128);
+
+  let largeImageText = 'Kalamalah';
+  if (surahClean) largeImageText = truncateDiscordField(`${surahClean} • ${artistClean}`, 128);
+  else if (artistClean) largeImageText = truncateDiscordField(artistClean, 128);
+
+  let largeImageKey = LOGO;
+  if (data.artUrl) {
+    const upscaled = upscaleArtworkTo900(data.artUrl);
+    if (upscaled) largeImageKey = upscaled;
+  }
+
+  const trackUrl = hasTrackId ? `https://kalamalah.com/surah/${trackId}` : 'https://kalamalah.com';
+  const smallIcon = isPlaying ? LOGO : LOGO;
+  const smallText = isPlaying ? 'Playing' : 'Paused';
+
+  const buttons = [
+    { label: 'Open Kalamalah', url: 'https://kalamalah.com' },
+    ...(trackId ? [{ label: 'View Surah', url: `https://kalamalah.com/surah/${trackId}` }] : []),
+  ];
+
+  const startSec = isPlaying && durSec > 0 ? Math.floor((nowMs / 1000) - posSec) : undefined;
+  const endSec = isPlaying && durSec > 0 ? Math.floor((nowMs / 1000) + (durSec - posSec)) : undefined;
+
+  const rawActivity = {
+    type: 2, // Listening
+    status_display_type: 1, // Show state (artist) in sidebar
+    details,
+    ...(trackUrl ? { details_url: trackUrl } : {}),
+    state,
+    state_url: 'https://kalamalah.com',
+    assets: {
+      large_image: largeImageKey,
+      large_text: largeImageText,
+      large_url: trackUrl,
+      small_image: smallIcon,
+      small_text: smallText,
+      small_url: 'https://kalamalah.com',
+    },
+    ...(startSec !== undefined && endSec !== undefined ? { timestamps: { start: startSec, end: endSec } } : {}),
+    ...(buttons.length > 0 ? { buttons: buttons.slice(0, 2) } : {}),
+    instance: false,
+  };
+
+  sendRawSetActivity(rawActivity).catch(() => {
+    const activity = {
+      type: 2,
+      statusDisplayType: 1,
+      details,
+      ...(trackUrl ? { detailsUrl: trackUrl } : {}),
+      state,
+      stateUrl: 'https://kalamalah.com',
+      largeImageKey,
+      largeImageText,
+      largeUrl: trackUrl,
+      smallImageKey: smallIcon,
+      smallImageText: smallText,
+      ...(isPlaying && durSec > 0
+        ? {
+            startTimestamp: Math.floor(nowMs - posSec * 1000),
+            endTimestamp: Math.floor(nowMs + (durSec - posSec) * 1000),
+          }
+        : {}),
+      ...(buttons.length > 0 ? { buttons: buttons.slice(0, 2) } : {}),
+      instance: false,
+    };
+
+    discordRPC.user.setActivity(activity).catch((err) => {
+      if (err?.message && err.message !== lastActivityError) {
+        lastActivityError = err.message;
+        log.warn('[Discord RPC] Error setting activity:', err.message);
+      }
+    });
+  });
+}
+
+function clearActivity() {
+  currentActivity = null;
+  if (!discordRPC || !isDiscordConnected || !discordRPC.user) return;
+  discordRPC.user.clearActivity?.().catch(() => {});
+}
 
 function initDiscordRPC() {
-  if (!DISCORD_CLIENT_ID) return; // No app id configured -> stay silent
+  if (!DISCORD_CLIENT_ID) return;
   if (!store.get('discordRPCEnabled')) return;
   if (discordRPC) return;
 
@@ -67,21 +270,19 @@ function initDiscordRPC() {
     discordRPC = new DiscordClient({ clientId: DISCORD_CLIENT_ID });
 
     discordRPC.on('ready', () => {
-      log.info('Discord RPC connected');
-      updateDiscordPresence({ page: 'Main Menu' });
+      isDiscordConnected = true;
+      log.info('[Discord RPC] Connected as', discordRPC.user?.username || 'User');
+      if (currentActivity) setActivity(currentActivity);
     });
 
     discordRPC.on('disconnected', () => {
-      log.warn('Discord RPC disconnected');
+      isDiscordConnected = false;
+      log.warn('[Discord RPC] Disconnected');
       discordRPC = null;
       scheduleDiscordReconnect();
     });
 
-    discordRPC.login().catch((err) => {
-      log.warn('Discord RPC unavailable:', err?.message || err);
-      discordRPC = null;
-      scheduleDiscordReconnect();
-    });
+    tryConnect();
   } catch (err) {
     log.warn('Failed to initialize Discord RPC:', err?.message || err);
     discordRPC = null;
@@ -89,34 +290,19 @@ function initDiscordRPC() {
 }
 
 function scheduleDiscordReconnect() {
-  if (discordReconnectTimer) clearTimeout(discordReconnectTimer);
+  if (discordReconnectTimer) return;
   discordReconnectTimer = setTimeout(() => {
-    if (store.get('discordRPCEnabled')) initDiscordRPC();
-  }, 60000);
+    discordReconnectTimer = null;
+    tryConnect();
+  }, 15000);
 }
 
-function updateDiscordPresence(details = {}) {
+function tryConnect() {
   if (!discordRPC) return;
-
-  const state = details.reciter ? `Reciter: ${details.reciter}` : 'Browsing';
-  const detailsText = details.surah
-    ? `Surah ${details.surah}`
-    : details.page || 'Main Menu';
-
-  try {
-    discordRPC.user?.setActivity({
-      details: detailsText,
-      state,
-      largeImageKey: 'kalamalah-logo',
-      largeImageText: 'Kalamalah Quran Player',
-      smallImageKey: details.playing ? 'play' : 'pause',
-      smallImageText: details.playing ? 'Playing' : 'Paused',
-      instance: false,
-      buttons: [{ label: 'Open Kalamalah', url: 'https://kalamalah.com' }],
-    });
-  } catch (err) {
-    log.warn('Failed to update Discord presence:', err?.message || err);
-  }
+  discordRPC.login().catch((err) => {
+    log.warn('[Discord RPC] Login failed (Discord may not be running):', err?.message || err);
+    scheduleDiscordReconnect();
+  });
 }
 
 function stopDiscordRPC() {
@@ -125,20 +311,17 @@ function stopDiscordRPC() {
     discordReconnectTimer = null;
   }
   try {
-    void discordRPC?.destroy()?.catch(() => {});
-  } catch {
-    /* ignore */
-  }
+    discordRPC?.destroy?.()?.catch(() => {});
+  } catch {}
   discordRPC = null;
+  isDiscordConnected = false;
 }
 
 // ---------------------------------------------------------------------------
 // Power save blocker
 // ---------------------------------------------------------------------------
 function enablePowerSaveBlocker() {
-  if (powerSaveBlockerId === null) {
-    powerSaveBlockerId = powerSaveBlocker.start('prevent-display-sleep');
-  }
+  if (powerSaveBlockerId === null) powerSaveBlockerId = powerSaveBlocker.start('prevent-display-sleep');
 }
 
 function disablePowerSaveBlocker() {
@@ -149,8 +332,7 @@ function disablePowerSaveBlocker() {
 }
 
 // ---------------------------------------------------------------------------
-// Navigation policy: kalamalah.com + subdomains stay in app, everything else
-// is handed to the OS default browser.
+// Navigation policy
 // ---------------------------------------------------------------------------
 function isInternalUrl(rawUrl) {
   try {
@@ -189,18 +371,18 @@ function createWindow() {
   const savedBounds = store.get('windowBounds') || {};
   const shouldMaximize = Boolean(store.get('windowMaximized'));
 
-  const windowOptions = {
+  const options = {
+    title: 'Kalamalah Player',
     width: savedBounds.width || 1200,
     height: savedBounds.height || 820,
     x: savedBounds.x,
     y: savedBounds.y,
     minWidth: 420,
     minHeight: 600,
-    icon: ICON_PATH,
-    title: 'Kalamalah Player',
-    backgroundColor: '#09090b',
     show: false,
-    frame: !IS_MAC,
+    icon: ICON_PATH,
+    roundedCorners: true,
+    backgroundColor: '#00000000',
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -211,13 +393,22 @@ function createWindow() {
   };
 
   if (IS_MAC) {
-    windowOptions.titleBarStyle = 'hiddenInset';
-    windowOptions.trafficLightPosition = { x: 16, y: 16 };
-    windowOptions.vibrancy = 'under-window';
-    windowOptions.visualEffectState = 'active';
+    options.titleBarStyle = 'hiddenInset';
+    options.trafficLightPosition = { x: 16, y: 16 };
+    options.vibrancy = 'sidebar';
+  } else if (IS_WIN) {
+    options.titleBarStyle = 'hidden';
+    options.backgroundMaterial = 'mica';
+  } else {
+    options.titleBarStyle = 'hidden';
+    options.titleBarOverlay = {
+      color: '#00000000',
+      symbolColor: nativeTheme.shouldUseDarkColors ? '#ffffff' : '#000000',
+      height: 36,
+    };
   }
 
-  mainWindow = new BrowserWindow(windowOptions);
+  mainWindow = new BrowserWindow(options);
 
   if (shouldMaximize) mainWindow.maximize();
 
@@ -231,15 +422,14 @@ function createWindow() {
 
   mainWindow.on('maximize', () => {
     store.set('windowMaximized', true);
-    mainWindow?.webContents.send('window:maximized', true);
+    mainWindow?.webContents.send('maximize-state', true);
   });
 
   mainWindow.on('unmaximize', () => {
     store.set('windowMaximized', false);
-    mainWindow?.webContents.send('window:maximized', false);
+    mainWindow?.webContents.send('maximize-state', false);
   });
 
-  // Close -> hide to tray, except on macOS or when actually quitting.
   mainWindow.on('close', (event) => {
     if (!isQuitting && !IS_MAC && tray) {
       event.preventDefault();
@@ -251,7 +441,7 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // Keep third-party links out of the app shell.
+  // Handle external links
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (isInternalUrl(url)) {
       void mainWindow?.loadURL(url);
@@ -267,9 +457,9 @@ function createWindow() {
     openExternal(url);
   });
 
-  // Offline fallback so a dead network does not leave a blank window.
+  // Offline fallback
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-    if (!isMainFrame || errorCode === -3 /* aborted */) return;
+    if (!isMainFrame || errorCode === -3) return;
     log.warn('Failed to load:', validatedURL, errorCode, errorDescription);
     if (!mainWindow || mainWindow.isDestroyed()) return;
 
@@ -305,7 +495,7 @@ function createWindow() {
 // ---------------------------------------------------------------------------
 function sendDeepLink(url) {
   if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isLoading()) {
-    mainWindow.webContents.send('deep-link', url);
+    mainWindow.webContents.send('navigate-to', url);
   } else {
     pendingDeepLink = url;
   }
@@ -323,36 +513,48 @@ function extractDeepLink(argv) {
 }
 
 // ---------------------------------------------------------------------------
-// IPC (registered once)
+// IPC
 // ---------------------------------------------------------------------------
 function registerIpc() {
-  ipcMain.on('window:minimize', () => mainWindow?.minimize());
-
-  ipcMain.on('window:maximize', () => {
+  // Windows build version (for Mica/acrylic detection)
+  ipcMain.on('win-build', (event) => {
+    try {
+      const release = require('os').release();
+      event.returnValue = Number(String(release).split('.').pop() || 0);
+    } catch {
+      event.returnValue = 0;
+    }
+  });
+  // Window controls (LyricsFlow-style)
+  ipcMain.on('window-controls', (_event, action) => {
     if (!mainWindow) return;
-    if (mainWindow.isMaximized()) mainWindow.unmaximize();
-    else mainWindow.maximize();
+    if (action === 'minimize') mainWindow.minimize();
+    else if (action === 'maximize') mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+    else if (action === 'close') mainWindow.close();
   });
 
+  // Legacy kalamalahElectron API
+  ipcMain.on('window:minimize', () => mainWindow?.minimize());
+  ipcMain.on('window:maximize', () => {
+    if (!mainWindow) return;
+    mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+  });
   ipcMain.on('window:close', () => mainWindow?.close());
   ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
   ipcMain.handle('window:getBounds', () => mainWindow?.getBounds() ?? {});
 
-  // Navigation (used by an optional custom toolbar)
+  // Navigation (used by custom toolbar)
   ipcMain.handle('nav:canGoBack', () => mainWindow?.webContents.canGoBack() ?? false);
   ipcMain.handle('nav:canGoForward', () => mainWindow?.webContents.canGoForward() ?? false);
-  ipcMain.on('nav:back', () => {
-    if (mainWindow?.webContents.canGoBack()) mainWindow.webContents.goBack();
-  });
-  ipcMain.on('nav:forward', () => {
-    if (mainWindow?.webContents.canGoForward()) mainWindow.webContents.goForward();
-  });
+  ipcMain.on('nav:back', () => mainWindow?.webContents.canGoBack() && mainWindow.webContents.goBack());
+  ipcMain.on('nav:forward', () => mainWindow?.webContents.canGoForward() && mainWindow.webContents.goForward());
   ipcMain.on('nav:reload', () => mainWindow?.webContents.reload());
   ipcMain.on('nav:home', () => void mainWindow?.loadURL(APP_URL));
 
+  // Discord RPC
   ipcMain.handle('discord:getStatus', () => ({
     enabled: Boolean(store.get('discordRPCEnabled')),
-    connected: Boolean(discordRPC),
+    connected: isDiscordConnected,
     configured: Boolean(DISCORD_CLIENT_ID),
   }));
 
@@ -362,11 +564,14 @@ function registerIpc() {
     else stopDiscordRPC();
   });
 
-  ipcMain.on('discord:updatePresence', (_event, details) => updateDiscordPresence(details));
+  ipcMain.on('discord:updatePresence', (_event, details) => setActivity(details));
+  ipcMain.on('discord:clear', clearActivity);
 
+  // Power save blocker
   ipcMain.on('powerSave:enable', enablePowerSaveBlocker);
   ipcMain.on('powerSave:disable', disablePowerSaveBlocker);
 
+  // Auto-updater
   ipcMain.handle('updater:check', () => checkForUpdates());
   ipcMain.handle('updater:download', () => autoUpdater.downloadUpdate());
   ipcMain.handle('updater:install', () => {
@@ -375,10 +580,12 @@ function registerIpc() {
   });
   ipcMain.handle('updater:getVersion', () => app.getVersion());
 
+  // Settings
   ipcMain.handle('settings:get', (_event, key) => store.get(key));
   ipcMain.on('settings:set', (_event, key, value) => store.set(key, value));
   ipcMain.handle('settings:getAll', () => store.store);
 
+  // App info
   ipcMain.handle('app:info', () => ({
     version: app.getVersion(),
     platform: process.platform,
@@ -451,7 +658,6 @@ async function checkForUpdates() {
   try {
     return await autoUpdater.checkForUpdates();
   } catch (err) {
-    // Offline / unsigned build / no published release: fail quietly.
     const message = err?.message || String(err);
     log.warn('Update check failed:', message);
     return { error: message };
@@ -544,13 +750,25 @@ if (!gotTheLock) {
   registerIpc();
   registerUpdaterEvents();
 
+  // Command line switches for performance
+  app.commandLine.appendSwitch('enable-gpu-rasterization');
+  app.commandLine.appendSwitch('enable-zero-copy');
+  app.commandLine.appendSwitch('ignore-gpu-blocklist');
+  app.commandLine.appendSwitch('disable-background-timer-throttling');
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+  app.commandLine.appendSwitch('disable-renderer-backgrounding');
+  app.commandLine.appendSwitch('high-dpi-support', '1');
+
+  if (IS_WIN) {
+    app.setAppUserModelId('com.kalamalah.player');
+  }
+
   app.whenReady().then(() => {
     createWindow();
     createTray();
     registerMediaKeys();
     initDiscordRPC();
 
-    // Delay the update probe so startup stays fast.
     setTimeout(() => void checkForUpdates(), 8000);
 
     app.on('activate', () => {
@@ -572,8 +790,7 @@ if (!gotTheLock) {
   });
 }
 
-// Register protocol handler (packaged builds register this at install time,
-// this covers dev runs and Linux desktops).
+// Register protocol handler
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
     app.setAsDefaultProtocolClient('kalamalah', process.execPath, [path.resolve(process.argv[1])]);

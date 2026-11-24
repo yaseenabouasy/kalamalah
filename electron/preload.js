@@ -1,21 +1,28 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+const isWin = process.platform === 'win32';
+
 const subscribe = (channel, callback) => {
   const handler = (_event, payload) => callback(payload);
   ipcRenderer.on(channel, handler);
   return () => ipcRenderer.removeListener(channel, handler);
 };
 
+// Primary API: kalamalahElectron (used by existing renderer code)
 const api = {
-  // ----- Window controls (used by src/client/window-controls.ts) -----
+  // Window controls (legacy API)
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   getBounds: () => ipcRenderer.invoke('window:getBounds'),
-  onMaximized: (callback) => subscribe('window:maximized', callback),
+  onMaximized: (callback) => subscribe('maximize-state', callback),
 
-  // ----- In-app navigation -----
+  // LyricsFlow-style window controls
+  windowControls: (action) => ipcRenderer.send('window-controls', action),
+  onMaximizeChange: (callback) => subscribe('maximize-state', callback),
+
+  // Navigation
   nav: {
     canGoBack: () => ipcRenderer.invoke('nav:canGoBack'),
     canGoForward: () => ipcRenderer.invoke('nav:canGoForward'),
@@ -24,21 +31,26 @@ const api = {
     reload: () => ipcRenderer.send('nav:reload'),
     home: () => ipcRenderer.send('nav:home'),
   },
+  onNavigate: (callback) => subscribe('navigate-to', callback),
 
-  // ----- Discord Rich Presence -----
+  // Discord RPC (LyricsFlow-style)
+  updateDiscordPresence: (data) => ipcRenderer.send('discord:updatePresence', data),
+  clearDiscordPresence: () => ipcRenderer.send('discord:clear'),
+
+  // Legacy Discord API
   discord: {
     getStatus: () => ipcRenderer.invoke('discord:getStatus'),
     setEnabled: (enabled) => ipcRenderer.send('discord:setEnabled', enabled),
     updatePresence: (details) => ipcRenderer.send('discord:updatePresence', details),
   },
 
-  // ----- Playback helpers -----
+  // Playback helpers
   powerSave: {
     enable: () => ipcRenderer.send('powerSave:enable'),
     disable: () => ipcRenderer.send('powerSave:disable'),
   },
 
-  // ----- Auto updater -----
+  // Auto updater
   updater: {
     check: () => ipcRenderer.invoke('updater:check'),
     download: () => ipcRenderer.invoke('updater:download'),
@@ -48,29 +60,31 @@ const api = {
     onProgress: (callback) => subscribe('updater:progress', callback),
   },
 
-  // ----- Settings -----
+  // Settings
   settings: {
     get: (key) => ipcRenderer.invoke('settings:get', key),
     set: (key, value) => ipcRenderer.send('settings:set', key, value),
     getAll: () => ipcRenderer.invoke('settings:getAll'),
   },
 
-  // ----- Shell integration -----
-  onDeepLink: (callback) => subscribe('deep-link', callback),
-  onMediaKey: (callback) => subscribe('media:play-pause', () => callback('play-pause')),
+  // Deep link
+  onDeepLink: (callback) => subscribe('navigate-to', callback),
 
-  // ----- Metadata -----
+  // Metadata
   appInfo: () => ipcRenderer.invoke('app:info'),
   platform: process.platform,
+  win10: isWin && (() => {
+    try { return ipcRenderer.sendSync('win-build') < 22621; } catch { return true; }
+  })(),
 };
 
 contextBridge.exposeInMainWorld('kalamalahElectron', api);
-// Backwards-compatible alias used by the newer desktop integrations.
+// Backwards-compatible alias
 contextBridge.exposeInMainWorld('kalamalahDesktop', api);
 
-window.addEventListener('DOMContentLoaded', () => {
-  // macOS: reserve space for the native traffic lights.
-  if (process.platform === 'darwin') {
+// macOS: reserve space for the native traffic lights
+if (process.platform === 'darwin') {
+  window.addEventListener('DOMContentLoaded', () => {
     const style = document.createElement('style');
     style.textContent = `
       :root { --traffic-light-offset: 78px; }
@@ -84,15 +98,16 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     `;
     document.head.appendChild(style);
-    return;
-  }
-
-  // Drag region for the frameless Windows/Linux shell.
-  if (!document.getElementById('kalamalah-drag-region')) {
-    const drag = document.createElement('div');
-    drag.id = 'kalamalah-drag-region';
-    drag.style.cssText =
-      'position:fixed;inset:0 0 auto 0;height:32px;z-index:9998;-webkit-app-region:drag;';
-    document.body.appendChild(drag);
-  }
-});
+  });
+} else {
+  // Windows/Linux: add a drag region at the top of the window
+  window.addEventListener('DOMContentLoaded', () => {
+    if (!document.getElementById('kalamalah-drag-region')) {
+      const drag = document.createElement('div');
+      drag.id = 'kalamalah-drag-region';
+      drag.style.cssText =
+        'position:fixed;inset:0 0 auto 0;height:32px;z-index:9998;-webkit-app-region:drag;';
+      document.body.appendChild(drag);
+    }
+  });
+}
