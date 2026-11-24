@@ -18,6 +18,14 @@ dist/
 /The_Hidden_Toggle*.mp3
 /hf-api-source/
 /hf-api-ts/
+/premid/
+/premid.zip
+/ref.txt
+/test_001.json
+/i18n-report.csv
+/islamonline_reciters.json
+/AUDIT_TRIAGE.md
+/FEATURES_IDEAS.md
 
 # Electron build output
 /electron/dist/
@@ -36,3 +44,19 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Bun
+bun.lock
+
+# Misc local files
+*.tar
+*.tar.gz
+*.mp3
+*.png
+*.jpg
+*.json
+!package.json
+!tsconfig.json
+!.dockerignore
+!LICENSE
+!README.md
