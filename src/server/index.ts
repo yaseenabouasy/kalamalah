@@ -72,6 +72,7 @@ app.use(
   })
 );
 const PUBLIC_DIR = join(process.cwd(), 'public');
+const VENDOR_DIR = join(process.cwd(), 'vendor');
 const PUBLIC_FONTS_DIR = join(process.cwd(), 'public', 'fonts');
 const PUBLIC_ICONS_DIR = join(process.cwd(), 'public', 'icons');
 const MAIN_FONTS_DIR = join(process.cwd(), 'main', 'fonts');
@@ -280,6 +281,27 @@ app.get('/js/*', async (c) => {
       headers: {
         'Content-Type': 'application/javascript; charset=utf-8',
         'Cache-Control': 'public, max-age=3600',
+      },
+    });
+  }
+  return c.notFound();
+});
+
+// Self-hosted vendor assets (fonts, AeroUI components, pre-fetched timings).
+app.get('/vendor/*', async (c) => {
+  const rel = c.req.path.replace(/^\/vendor\/+/, '');
+  const safePath = resolveSafePublicPath(VENDOR_DIR, rel);
+  if (!safePath) return c.notFound();
+  const file = Bun.file(safePath);
+  if (await file.exists()) {
+    const ext = safePath.slice(safePath.lastIndexOf('.')).toLowerCase();
+    const immutable = ['.woff2', '.woff', '.ttf', '.otf'].includes(ext);
+    return new Response(file, {
+      headers: {
+        'Content-Type': getMimeType(safePath),
+        'Cache-Control': immutable
+          ? 'public, max-age=31536000, immutable'
+          : 'public, max-age=3600',
       },
     });
   }

@@ -343,12 +343,6 @@ export function renderLayout(props: LayoutProps): string {
   <link rel="preload" href="/vendor/fonts/tajawal/Tajawal-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/vendor/fonts/tajawal/tajawal.css" />
 
-  <!-- Local AeroUI Components (self-hosted from vendor/) -->
-  <link rel="stylesheet" href="/vendor/aeroui/aeroui.css" />
-  <script type="module" src="/vendor/aeroui/components/elastic-slider/elastic-slider.js"></script>
-  <script type="module" src="/vendor/aeroui/components/player-button/player-button.js"></script>
-  <script type="module" src="/vendor/aeroui/components/skip-label/skip-label.js"></script>
-
   <!-- Application Stylesheets -->
   <link rel="stylesheet" href="/css/searchable-dropdown.css" />
   <link rel="stylesheet" href="/css/app.css" />
