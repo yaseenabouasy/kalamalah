@@ -45,7 +45,7 @@ export const RECITERS_CATALOG: ReciterInfo[] = [
     kalamalahSlug: 'haitham-al-dukhin',
     islamOnlineTimingSlug: 'haitham-al-dukhin',
     mp3QuranReadId: 273,
-    audioBaseUrl: 'https://api.kalamalah.com/api/haitham-al-dukhin/murattal',
+    audioBaseUrl: 'https://cdn.mp3quran.net/audio/haitham-dukhain/r1',
   },
   {
     id: 2,

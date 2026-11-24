@@ -342,10 +342,10 @@
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
     gap: 16px;
-    padding: 48px 20px 20px;
+    padding: 56px 24px 24px;
   }
-  .pc-top-volume-bar {
-    display: none;
+  .aml-player-column.NowBar {
+    max-width: 340px;
   }
 }
 
@@ -370,7 +370,7 @@
   margin: 0 auto 22px;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 900px) {
   .MediaBox {
     display: none;
   }
@@ -838,3 +838,914 @@
     transform: none !important;
   }
 }
+
+/* ==========================================================================
+   Fullscreen player layer: top bar, scene picker, scenes, mixer, vinyl, queue
+   ========================================================================== */
+
+/* ── Top bar ── */
+.aml-top-bar {
+  position: fixed;
+  top: 16px;
+  left: 0;
+  right: 0;
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  pointer-events: none;
+}
+
+.aml-top-bar > * {
+  pointer-events: auto;
+}
+
+.aml-top-bar .pc-top-left-pill-bar {
+  position: static;
+  top: auto;
+  left: auto;
+  background: rgba(18, 20, 26, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.aml-top-right-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aml-scene-pill-wrap {
+  position: relative;
+}
+
+.aml-scene-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(18, 20, 26, 0.46);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  color: rgba(255, 255, 255, 0.92);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+  white-space: nowrap;
+}
+
+.aml-scene-pill:hover {
+  background: rgba(28, 31, 39, 0.62);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.aml-scene-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c8a45d;
+  box-shadow: 0 0 0 3px rgba(200, 164, 93, 0.18);
+}
+
+.aml-scene-pill[data-scene='rain'] .aml-scene-pill-dot {
+  background: #82b4d8;
+  box-shadow: 0 0 0 3px rgba(130, 180, 216, 0.18);
+}
+
+.aml-scene-pill[data-scene='forest'] .aml-scene-pill-dot {
+  background: #7fae88;
+  box-shadow: 0 0 0 3px rgba(127, 174, 136, 0.18);
+}
+
+.aml-scene-pill[data-scene='dybg'] .aml-scene-pill-dot {
+  background: #a58bd2;
+  box-shadow: 0 0 0 3px rgba(165, 139, 210, 0.18);
+}
+
+.aml-scene-pill[data-scene='off'] .aml-scene-pill-dot {
+  background: #7d858f;
+  box-shadow: none;
+}
+
+.aml-scene-chevron {
+  opacity: 0.62;
+  transition: transform 200ms ease;
+}
+
+.aml-scene-pill[aria-expanded='true'] .aml-scene-chevron {
+  transform: rotate(180deg);
+}
+
+.aml-round-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(18, 20, 26, 0.46);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  color: rgba(255, 255, 255, 0.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background 180ms ease, transform 200ms ease;
+}
+
+.aml-round-icon-btn:hover {
+  background: rgba(28, 31, 39, 0.7);
+  transform: rotate(22deg);
+}
+
+.aml-scene-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-end: 0;
+  width: 214px;
+  padding: 6px;
+  border-radius: 16px;
+  background: rgba(16, 18, 24, 0.94);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 40;
+  animation: amlSceneMenuIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes amlSceneMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
+.aml-scene-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 550;
+  text-align: start;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.aml-scene-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.aml-scene-option.is-active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.aml-scene-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  flex: 0 0 auto;
+}
+
+.aml-scene-swatch.is-islamic {
+  background-image: linear-gradient(140deg, #2b2113, #c8a45d);
+}
+
+.aml-scene-swatch.is-rain {
+  background-image: linear-gradient(140deg, #16222e, #5d7f96);
+}
+
+.aml-scene-swatch.is-forest {
+  background-image: linear-gradient(140deg, #12211a, #4d7a56);
+}
+
+.aml-scene-swatch.is-dybg {
+  background-image: linear-gradient(140deg, #241a33, #6f5b9c);
+}
+
+.aml-scene-swatch.is-off {
+  background-image: linear-gradient(140deg, #16181d, #2a2f37);
+}
+
+/* ── Photographic rain / forest layers ── */
+.aml-scene-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  background: #0a0e13;
+  transition: opacity 700ms ease;
+  visibility: hidden;
+}
+
+.aml-scene-layer.is-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.aml-scene-poster {
+  position: absolute;
+  inset: -4%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(2px) saturate(1.05) brightness(0.6);
+  transform: scale(1.06);
+}
+
+.aml-scene-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.04) brightness(0.66);
+  transform: scale(1.03);
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+.aml-scene-video.is-ready {
+  opacity: 1;
+}
+
+.aml-scene-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(6, 9, 14, 0.18) 0%, rgba(5, 7, 11, 0.72) 100%),
+    linear-gradient(180deg, rgba(5, 7, 12, 0.62) 0%, rgba(5, 7, 12, 0.32) 45%, rgba(4, 6, 10, 0.8) 100%);
+}
+
+/* ── Mobile compact track head ── */
+.aml-mobile-head {
+  display: none;
+}
+
+/* ── Toolbar / mixer / more panel (shared) ── */
+.aml-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.aml-tool-btn {
+  width: 42px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.72);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.aml-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.aml-tool-btn.active,
+.aml-tool-btn[aria-pressed='true'] {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #161618;
+}
+
+.aml-tool-tajweed span {
+  font-family: var(--font-quran-reading, 'Kitab', serif);
+  font-size: 1.05rem;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.aml-tool-btn.hidden {
+  display: none !important;
+}
+
+.aml-mixer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.aml-mixer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.aml-mixer-label {
+  flex: 0 0 auto;
+  width: 82px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.56);
+  white-space: nowrap;
+}
+
+.aml-mixer-range {
+  flex: 1 1 auto;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.aml-mixer-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.aml-mixer-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: none;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+.aml-mixer-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.aml-mixer-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.aml-mixer-value {
+  flex: 0 0 auto;
+  width: 38px;
+  text-align: end;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.52);
+  font-variant-numeric: tabular-nums;
+}
+
+.NowBarBottomWrapper {
+  position: relative;
+}
+
+.aml-more-panel {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  inset-inline: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(16, 18, 24, 0.95);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.5);
+  z-index: 26;
+  animation: amlSceneMenuIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aml-more-panel.hidden {
+  display: none;
+}
+
+.aml-more-panel .pc-sync-offset-pill {
+  width: 100%;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.aml-more-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.82);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.aml-more-item:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.aml-more-item.active,
+.aml-more-item[aria-pressed='true'] {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #161618;
+}
+
+.aml-more-item.hidden {
+  display: none !important;
+}
+
+.aml-more-item img {
+  filter: brightness(0) invert(1);
+  opacity: 0.85;
+}
+
+.aml-more-item.active img,
+.aml-more-item[aria-pressed='true'] img {
+  filter: none;
+  opacity: 0.9;
+}
+
+.more-trigger svg {
+  opacity: 0.82;
+}
+
+/* ── Ayah queue panel ── */
+.aml-queue-panel {
+  position: fixed;
+  bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(440px, calc(100vw - 32px));
+  max-height: 54vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(14, 16, 21, 0.96);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.55);
+  z-index: 32;
+  overflow: hidden;
+}
+
+.aml-queue-panel.hidden {
+  display: none;
+}
+
+.aml-queue-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.aml-queue-close {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.aml-queue-list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  scrollbar-width: thin;
+}
+
+.aml-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.76);
+  font-family: inherit;
+  font-size: 0.76rem;
+  text-align: start;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.aml-queue-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+}
+
+.aml-queue-item.is-active {
+  background: rgba(255, 255, 255, 0.13);
+  color: #ffffff;
+}
+
+.aml-queue-num {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(214, 187, 138, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: rgba(214, 187, 138, 0.92);
+}
+
+.aml-queue-snippet {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-quran-reading, 'Kitab', serif);
+}
+
+/* ── Vinyl / album-art mode (Quran view off) ── */
+.aml-vinyl-stage {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.aml-fullscreen-overlay.quran-view-off .aml-vinyl-stage {
+  display: flex;
+}
+
+.aml-fullscreen-overlay.quran-view-off .aml-lyrics-scroll-container {
+  display: none;
+}
+
+.aml-vinyl-disc {
+  position: relative;
+  width: min(58vw, 300px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle at 50% 50%, #17191e 0 2px, #0c0e11 2px 4px);
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: amlVinylSpin 9s linear infinite;
+  animation-play-state: paused;
+}
+
+.aml-vinyl-stage.is-spinning .aml-vinyl-disc {
+  animation-play-state: running;
+}
+
+.aml-vinyl-art {
+  position: absolute;
+  top: 26%;
+  left: 26%;
+  width: 48%;
+  height: 48%;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.aml-vinyl-hole {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #0a0b0e;
+  border: 2px solid #2a2d34;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes amlVinylSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── HUD hiding also covers the new chrome ── */
+.aml-fullscreen-overlay.hud-hidden .aml-toolbar-row,
+.aml-fullscreen-overlay.hud-hidden .aml-mixer,
+.aml-fullscreen-overlay.hud-hidden .aml-more-panel {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.aml-top-bar,
+.aml-toolbar-row,
+.aml-mixer,
+.aml-mobile-head {
+  transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1), visibility 240ms ease;
+}
+
+/* ── Mobile composition (matches the reference player screenshots) ── */
+@media (max-width: 900px) {
+  .aml-fullscreen-overlay {
+    height: 100dvh;
+    padding-bottom: 0;
+  }
+
+  .aml-mobile-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 8;
+    padding: 52px 16px 6px;
+    flex: 0 0 auto;
+  }
+
+  .aml-head-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+    flex: 0 0 auto;
+  }
+
+  .aml-head-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .aml-head-surah {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .aml-head-reciter {
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .aml-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+
+  .aml-head-actions .favorite-button {
+    width: 34px;
+    height: 34px;
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .aml-layout.ContentBox {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    align-items: stretch;
+  }
+
+  .aml-lyrics-column.LyricsContainer {
+    order: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    width: 100%;
+  }
+
+  .aml-lyrics-scroll-container.LyricsContent {
+    padding: 0 16px calc(120px + env(safe-area-inset-bottom, 0px)) 16px;
+    mask-image: linear-gradient(180deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+  }
+
+  .aml-ayahs-list.lyrics-track {
+    gap: 16px;
+    padding-top: 12px;
+    padding-bottom: 24px;
+  }
+
+  .aml-ayah-line {
+    padding: 10px 8px;
+  }
+
+  .aml-ayah-arabic {
+    font-size: clamp(1.45rem, 5.6vw, 2rem);
+    line-height: 1.95;
+  }
+
+  .aml-ayah-translation {
+    font-size: 0.86rem;
+    margin-top: 4px;
+  }
+
+  .aml-player-column.NowBar {
+    order: 2;
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 12px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+    border-radius: 26px 26px 0 0;
+    background: linear-gradient(180deg, rgba(12, 14, 19, 0.35) 0%, rgba(10, 12, 17, 0.78) 26%, rgba(8, 10, 14, 0.94) 100%);
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    backdrop-filter: blur(28px) saturate(150%);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 -18px 44px rgba(0, 0, 0, 0.36);
+  }
+
+  .aml-player-column .MetadataRow {
+    display: none;
+  }
+
+  .NowBarBottomWrapper {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .NowBarControls {
+    order: 1;
+    margin-bottom: 12px;
+    padding: 0 4px;
+  }
+
+  .NowBarProgress {
+    order: 2;
+    margin-bottom: 14px;
+  }
+
+  .aml-toolbar-row {
+    order: 3;
+  }
+
+  .aml-mixer {
+    order: 4;
+  }
+
+  .NowBarControls .aero-player.play-pause {
+    --player-size: 58px;
+  }
+
+  .NowBarControls .play-pause svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  .aml-player-column .VolumeArea {
+    display: none;
+  }
+
+  .aml-hud-toggle-btn {
+    display: none;
+  }
+
+  .aml-sheet-handle {
+    top: 8px;
+  }
+
+  .aml-top-bar {
+    top: 14px;
+    padding: 0 14px;
+  }
+
+  .aml-scene-menu {
+    position: fixed;
+    top: 56px;
+    inset-inline: 14px auto;
+    right: 14px;
+    width: min(240px, calc(100vw - 28px));
+  }
+
+  .aml-more-panel {
+    border-radius: 20px;
+    bottom: calc(100% + 10px);
+  }
+
+  .aml-vinyl-stage {
+    padding: 8px 0 12px;
+  }
+
+  .aml-vinyl-disc {
+    width: min(64vw, 268px);
+  }
+
+  .aml-queue-panel {
+    bottom: auto;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    max-height: 62vh;
+  }
+}
+
+@media (max-width: 380px) {
+  .aml-top-bar {
+    padding: 0 10px;
+  }
+
+  .aml-scene-pill {
+    max-width: 190px;
+    overflow: hidden;
+  }
+
+  .aml-scene-pill span#aml-bg-mode-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .aml-mixer-label {
+    width: 72px;
+  }
+
+  .NowBarControls .play-pause svg {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aml-vinyl-disc {
+    animation: none !important;
+  }
+
+  .aml-scene-layer,
+  .aml-scene-video,
+  .aml-top-bar,
+  .aml-toolbar-row,
+  .aml-mixer {
+    transition: none !important;
+  }
+}
+

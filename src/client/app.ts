@@ -24,6 +24,13 @@ import { initCastController } from './cast-controller';
 import { initAyahCardGenerator } from './ayah-card';
 import { initAyahEmbedWidget } from './ayah-embed';
 import { initWindowControls } from './window-controls';
+import { initSettingsSheet } from './settings-sheet';
+// @ts-ignore - AeroUI components have no declaration files
+import { initPlayerButtons, setPlayerIcon } from './aeroui/components/player-button/player-button.js';
+// @ts-ignore
+import { initElasticSliders } from './aeroui/components/elastic-slider/elastic-slider.js';
+// @ts-ignore
+import { initSkipLabels, playSkip } from './aeroui/components/skip-label/skip-label.js';
 import { initZarazConsent, setZarazConsent, trackPageView } from './zaraz';
 
 function parseBootstrapCatalog(): BootstrapCatalog {
@@ -1342,6 +1349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   initSleepTimer();
   initChangelogModal();
+  initSettingsSheet();
   initAmbientMixer();
   initHifzTools();
   initDualScreenMode();
@@ -1355,4 +1363,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   initAyahCardGenerator();
   initAyahEmbedWidget();
   initWindowControls();
+
+  // Initialize AeroUI components
+  initPlayerButtons();
+  initElasticSliders();
+  initSkipLabels();
+  // Expose AeroUI helpers globally for quran-player.ts
+  (window as any).setPlayerIcon = setPlayerIcon;
+  (window as any).playSkip = playSkip;
 });

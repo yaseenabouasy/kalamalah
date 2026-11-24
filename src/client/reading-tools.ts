@@ -108,6 +108,15 @@ export function colorizeArabicWordTajweed(word: string, schema: TajweedSchema): 
 }
 
 /**
+ * Wraps sukoon (U+0652) in a span with Kitab font to fix rendering issues
+ * in Uthmani and Nastaleeq fonts where sukoon may not render correctly.
+ */
+function wrapSukoonInKitab(html: string): string {
+  // Match sukoon character (U+0652) that's not already wrapped
+  return html.replace(/([\u0652])/g, '<span class="sukoon-kitab" style="font-family:var(--font-kitab, \'Kitab\', serif);font-size:0.85em;line-height:1;">$1</span>');
+}
+
+/**
  * Normalizes Quran text for fonts whose glyph tables do not include Tanzil's extended
  * Unicode 06DF/06E0/06EA..06ED annotations (which otherwise render as dotted-circle
  * or ۞ rub-el-hizb placeholders in KFGQPC UthmanicHafs_V22 and KFGQPCNastaleeq).
@@ -166,9 +175,20 @@ export function initReadingTools(): void {
       const filtered = filterWordDiacritics(fontNormalized, currentTashkeelPreset);
 
       if (tajweedEnabled) {
-        el.innerHTML = colorizeArabicWordTajweed(filtered, currentTajweedSchema);
+        let html = colorizeArabicWordTajweed(filtered, currentTajweedSchema);
+        // Fix sukoon rendering for Uthmani/Nastaleeq by wrapping in Kitab font
+        if (currentReadingFont !== 'kitab' && currentReadingFont !== 'amiri') {
+          html = wrapSukoonInKitab(html);
+        }
+        el.innerHTML = html;
       } else {
-        el.textContent = filtered;
+        let text = filtered;
+        // Fix sukoon rendering for Uthmani/Nastaleeq
+        if (currentReadingFont !== 'kitab' && currentReadingFont !== 'amiri') {
+          el.innerHTML = wrapSukoonInKitab(escapeHtml(text));
+        } else {
+          el.textContent = text;
+        }
       }
 
       if (currentMemoDensity > 0) {
@@ -226,10 +246,10 @@ export function initReadingTools(): void {
   });
 
   // 1. Reading Fonts Switcher (Uthmani, Kitab, Amiri, and Nastaleeq last)
-  const rawSavedFont = localStorage.getItem('kalamalah_reading_font') || 'uthmani';
+  const rawSavedFont = localStorage.getItem('kalamalah_reading_font') || 'kitab';
   const savedFont = (['uthmani', 'kitab', 'amiri', 'nastaleeq'].includes(rawSavedFont)
     ? rawSavedFont
-    : 'uthmani') as ReadingFont;
+    : 'kitab') as ReadingFont;
   const setReadingFont = (font: ReadingFont) => {
     if (!['uthmani', 'kitab', 'amiri', 'nastaleeq'].includes(font)) return;
     currentReadingFont = font;
@@ -267,6 +287,12 @@ export function initReadingTools(): void {
 
   document.getElementById('font-size-dec')?.addEventListener('click', () => applyFontScale(fontSizePercent - 10));
   document.getElementById('font-size-inc')?.addEventListener('click', () => applyFontScale(fontSizePercent + 10));
+
+  // Sync with the shared Settings sheet
+  window.addEventListener('kalamalah:font-scale-changed', (e: Event) => {
+    const scale = Number((e as CustomEvent<{ scale: number }>).detail?.scale);
+    if (Number.isFinite(scale)) applyFontScale(scale);
+  });
 
   // 3. View Mode Switcher (Cards / Continuous Mushaf / With Inline Tafseer)
   const wrapperEl = document.getElementById('surah-ayahs-wrapper');
@@ -336,6 +362,15 @@ export function initReadingTools(): void {
       document.querySelectorAll('[data-tashkeel-preset]').forEach((b) => b.classList.toggle('active', b === btn));
       refreshAllWordsRender();
     });
+  });
+
+  window.addEventListener('kalamalah:tashkeel-changed', (e: Event) => {
+    const preset = (e as CustomEvent<{ preset: TashkeelPreset }>).detail?.preset || 'all';
+    currentTashkeelPreset = preset;
+    document.querySelectorAll<HTMLElement>('[data-tashkeel-preset]').forEach((b) => {
+      b.classList.toggle('active', b.getAttribute('data-tashkeel-preset') === preset);
+    });
+    refreshAllWordsRender();
   });
 
   // 6. Memorization Panel & Density

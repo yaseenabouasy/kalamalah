@@ -2,9 +2,12 @@
 import dybg from './dybg.js';
 import type { NormalizedSurahTimings } from '../server/timings-service';
 import { AmlAyahAnimator } from './aml-ayah-animator';
+import { getAmbientMixer } from './ambient-mixer';
+import { BackgroundScenes, type SceneId } from './background-scenes';
 import { formatLocaleDigits, getActiveLocale, isRtlLocale, t } from './i18n';
 import { colorizeArabicWordTajweed, toggleBookmarkAyah } from './reading-tools';
 import { ScrollController } from './scroll-controller';
+import { SETTINGS_KEYS, readSetting, writeSetting } from './settings-sheet';
 import {
   fetchSurahApi,
   fetchTimingsApi,
@@ -99,7 +102,11 @@ export class QuranPlayerController {
   private speedIndex = 1;
   private showFullscreenTranslation = true;
   private showFullscreenTajweed = false;
-  private fullscreenBgMode: 'dybg' | 'islamic' | 'off' = 'islamic';
+  private fullscreenBgMode: SceneId = 'islamic';
+  private scenes: BackgroundScenes | null = null;
+  private showQuranText = true;
+  private displayMode: 'default' | 'cinematic' = 'default';
+  private cinematicIdleTimer: ReturnType<typeof setTimeout> | null = null;
   private islamicBgIndex = 0;
   private islamicActiveSlot: 'a' | 'b' = 'a';
   private islamicBgTimer: ReturnType<typeof setInterval> | null = null;
@@ -158,12 +165,24 @@ export class QuranPlayerController {
       amlScrollEl.addEventListener('wheel', onUserScroll, { passive: true });
       amlScrollEl.addEventListener('touchmove', onUserScroll, { passive: true });
     }
-    try {
-      const savedBg = localStorage.getItem('kalamalah_fs_bg_mode');
-      if (savedBg === 'dybg' || savedBg === 'islamic' || savedBg === 'off') {
-        this.fullscreenBgMode = savedBg;
-      }
-    } catch {}
+    const savedBg = readSetting(SETTINGS_KEYS.scene, 'islamic');
+    if (['dybg', 'islamic', 'rain', 'forest', 'off'].includes(savedBg)) {
+      this.fullscreenBgMode = savedBg as SceneId;
+    }
+    this.showQuranText = readSetting(SETTINGS_KEYS.quranView, '1') !== '0';
+    this.showFullscreenTranslation = readSetting(SETTINGS_KEYS.translation, '1') !== '0';
+    this.showFullscreenTajweed = readSetting(SETTINGS_KEYS.tajweed, '0') === '1';
+    this.displayMode = readSetting(SETTINGS_KEYS.displayMode, 'default') === 'cinematic' ? 'cinematic' : 'default';
+
+    this.scenes = new BackgroundScenes();
+    this.scenes.setMotionAllowed(readSetting(SETTINGS_KEYS.reduceMotion, '0') !== '1');
+
+    const savedQuranVolume = Number(readSetting(SETTINGS_KEYS.quranVolume, '1'));
+    this.audioEl.volume = Math.max(0, Math.min(1, Number.isFinite(savedQuranVolume) ? savedQuranVolume : 1));
+    const savedAmbientVolume = Number(readSetting(SETTINGS_KEYS.ambientVolume, '0.35'));
+    getAmbientMixer().setMasterVolume(
+      Math.max(0, Math.min(1, Number.isFinite(savedAmbientVolume) ? savedAmbientVolume : 0.35))
+    );
     // Deferred: the dybg WebGL context and the 1920px background images are
     // created on first fullscreen open (see applyFullscreenBgMode), not on every
     // page load. The overlay is hidden at boot, so nothing needs them yet.
@@ -515,6 +534,28 @@ export class QuranPlayerController {
     }
   }
 
+  private renderQueuePanel(): void {
+    const list = document.getElementById('aml-queue-list');
+    if (!list) return;
+    if (this.currentAyahsData.length === 0) {
+      list.innerHTML = '<p class="aml-empty-msg" style="padding:14px;">لا توجد آيات محمّلة بعد.</p>';
+      return;
+    }
+    const escapeText = (value: string) =>
+      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    list.innerHTML = this.currentAyahsData
+      .map((ayah) => {
+        const snippet = escapeText(ayah.text.trim().slice(0, 70));
+        const active = ayah.n === this.activeAyahNumber;
+        return `<button type="button" class="aml-queue-item${active ? ' is-active' : ''}" data-queue-ayah="${ayah.n}">
+          <span class="aml-queue-num">${toArDigits(ayah.n)}</span>
+          <span class="aml-queue-snippet">${snippet}</span>
+        </button>`;
+      })
+      .join('');
+    list.querySelector<HTMLElement>('.aml-queue-item.is-active')?.scrollIntoView({ block: 'center' });
+  }
+
   private initDybgCanvas(): void {
     const bgContainer = document.getElementById('dynamic-bg');
     if (!bgContainer) return;
@@ -601,6 +642,22 @@ export class QuranPlayerController {
     setTxt('aml-now-reciter-link', `${t('reciterPrefix', locale)} ${reciterName}`);
     const amlRecLink = document.getElementById('aml-now-reciter-link') as HTMLAnchorElement | null;
     if (amlRecLink) amlRecLink.href = `/reciter-${reciter.slug}`;
+
+    setTxt('aml-head-surah', `سورة ${surah.ar}`);
+    setTxt('aml-head-reciter', `${t('reciterPrefix', locale)} ${reciterName}`);
+    const headRecLink = document.getElementById('aml-head-reciter') as HTMLAnchorElement | null;
+    if (headRecLink) headRecLink.href = `/reciter-${reciter.slug}`;
+
+    const headAvatar = document.getElementById('aml-head-avatar') as HTMLImageElement | null;
+    if (headAvatar && headAvatar.src !== reciterPhotoUrl) {
+      headAvatar.src = reciterPhotoUrl;
+      headAvatar.alt = reciterName;
+    }
+    const vinylArt = document.getElementById('aml-vinyl-art') as HTMLImageElement | null;
+    if (vinylArt && vinylArt.src !== reciterPhotoUrl) {
+      vinylArt.src = reciterPhotoUrl;
+      vinylArt.alt = reciterName;
+    }
 
     const dlHref = getDownloadUrl(reciter, surah.n);
     const qpDlBtn = document.getElementById('qp-download-surah-btn') as HTMLAnchorElement | null;
@@ -907,10 +964,15 @@ export class QuranPlayerController {
   }
 
   private updatePlayPauseIcons(isPlaying: boolean): void {
-    document.querySelectorAll('#qp-play-toggle-btn, #aml-play-btn').forEach((btn) => {
+    document.querySelectorAll('#qp-play-toggle-btn').forEach((btn) => {
       btn.querySelector('.icon-play')?.classList.toggle('hidden', isPlaying);
       btn.querySelector('.icon-pause')?.classList.toggle('hidden', !isPlaying);
     });
+    // AeroUI play button: use setPlayerIcon for animated swap
+    const amlPlayBtn = document.getElementById('aml-play-btn');
+    if (amlPlayBtn && (window as any).setPlayerIcon) {
+      (window as any).setPlayerIcon(amlPlayBtn, isPlaying ? 'pause' : 'play');
+    }
     const artCard = document.getElementById('aml-artwork-card');
     artCard?.classList.toggle('is-playing', isPlaying);
     artCard?.classList.toggle('paused', !isPlaying);
@@ -921,54 +983,145 @@ export class QuranPlayerController {
     } else {
       this.dybgInstance?.pause?.();
     }
+
+    this.scenes?.setPlaying(isPlaying);
+    document.getElementById('aml-vinyl-stage')?.classList.toggle('is-spinning', isPlaying);
+    if (isPlaying) {
+      this.scheduleCinematicIdle();
+    } else {
+      this.clearCinematicTimer();
+    }
+  }
+
+  private static readonly SCENE_LABELS: Record<SceneId, string> = {
+    islamic: 'الخلفية: الكعبة والحرمين',
+    rain: 'الخلفية: مطر',
+    forest: 'الخلفية: غابة',
+    dybg: 'الخلفية: ديناميكية',
+    off: 'الخلفية: بدون',
+  };
+
+  public setSceneMode(mode: SceneId, persist = true): void {
+    this.fullscreenBgMode = mode;
+    if (persist) writeSetting(SETTINGS_KEYS.scene, mode);
+    this.applyFullscreenBgMode();
+  }
+
+  private syncAmbientBed(): void {
+    const mixer = getAmbientMixer();
+    const track =
+      this.fullscreenBgMode === 'rain' ? 'rain' : this.fullscreenBgMode === 'forest' ? 'forest' : null;
+    const fsOverlay = document.getElementById('aml-fullscreen-player');
+    const isFsOpen = fsOverlay ? !fsOverlay.classList.contains('hidden') : false;
+    mixer.playOnly(track && isFsOpen ? track : null);
   }
 
   private applyFullscreenBgMode(): void {
     const dybgEl = document.getElementById('dynamic-bg');
     const islamicEl = document.getElementById('aml-islamic-bg');
     const modeBtn = document.getElementById('aml-bg-mode-btn');
+    const modeLabel = document.getElementById('aml-bg-mode-label');
     const nextBtn = document.getElementById('aml-bg-next-btn');
     const fsOverlay = document.getElementById('aml-fullscreen-player');
     const isFsOpen = fsOverlay ? !fsOverlay.classList.contains('hidden') : false;
+    const mode = this.fullscreenBgMode;
 
-    if (this.fullscreenBgMode === 'dybg') {
+    dybgEl?.classList.toggle('hidden', mode !== 'dybg');
+    islamicEl?.classList.toggle('hidden', mode !== 'islamic');
+    this.scenes?.setScene(mode);
+
+    if (modeBtn) {
+      modeBtn.setAttribute('data-scene', mode);
+      modeBtn.setAttribute('aria-expanded', 'false');
+    }
+    if (modeLabel) modeLabel.textContent = QuranPlayerController.SCENE_LABELS[mode];
+    nextBtn?.classList.toggle('hidden', mode !== 'islamic');
+
+    document.querySelectorAll<HTMLElement>('#aml-scene-menu [data-scene]').forEach((opt) => {
+      const active = opt.getAttribute('data-scene') === mode;
+      opt.classList.toggle('is-active', active);
+      opt.setAttribute('aria-checked', String(active));
+    });
+
+    if (mode !== 'dybg') this.dybgInstance?.pause?.();
+    if (mode !== 'islamic') this.stopIslamicBgRotator();
+
+    if (mode === 'dybg') {
       if (!this.dybgInstance) this.initDybgCanvas();
-      dybgEl?.classList.remove('hidden');
-      islamicEl?.classList.add('hidden');
-      nextBtn?.classList.add('hidden');
-      if (modeBtn) {
-        modeBtn.textContent = t('bgDynamic');
-        modeBtn.classList.remove('active');
-      }
-      this.stopIslamicBgRotator();
       if (isFsOpen || !this.audioEl.paused) {
         this.dybgInstance?.resume?.();
       }
-    } else if (this.fullscreenBgMode === 'islamic') {
-      dybgEl?.classList.add('hidden');
-      this.dybgInstance?.pause?.();
-      islamicEl?.classList.remove('hidden');
-      nextBtn?.classList.remove('hidden');
-      if (modeBtn) {
-        modeBtn.textContent = t('bgIslamic');
-        modeBtn.classList.add('active');
-      }
+    } else if (mode === 'islamic') {
       this.showIslamicBackgroundSlide(this.islamicBgIndex, true);
       if (isFsOpen) {
         this.startIslamicBgRotator();
       }
-    } else {
-      // 'off' - completely disable dybg and moving backgrounds
-      dybgEl?.classList.add('hidden');
-      islamicEl?.classList.add('hidden');
-      nextBtn?.classList.add('hidden');
-      this.dybgInstance?.pause?.();
-      this.stopIslamicBgRotator();
-      if (modeBtn) {
-        modeBtn.textContent = t('bgOff');
-        modeBtn.classList.remove('active');
-      }
     }
+
+    this.syncAmbientBed();
+    this.scenes?.setPlaying(isFsOpen && !this.audioEl.paused);
+  }
+
+  private applyQuranView(): void {
+    const fsOverlay = document.getElementById('aml-fullscreen-player');
+    if (!fsOverlay) return;
+    fsOverlay.classList.toggle('quran-view-off', !this.showQuranText);
+    const viewBtn = document.getElementById('aml-quran-view-btn');
+    if (viewBtn) {
+      viewBtn.setAttribute('aria-pressed', String(this.showQuranText));
+      viewBtn.classList.toggle('active', this.showQuranText);
+    }
+  }
+
+  private applyDisplayMode(): void {
+    const fsOverlay = document.getElementById('aml-fullscreen-player');
+    if (!fsOverlay) return;
+    const cinematic = this.displayMode === 'cinematic';
+    fsOverlay.classList.toggle('cinematic-mode', cinematic);
+    if (!cinematic) {
+      this.clearCinematicTimer();
+      fsOverlay.classList.remove('hud-hidden');
+      const hudToggleBtn = document.getElementById('aml-toggle-hud-btn');
+      hudToggleBtn?.setAttribute('aria-pressed', 'false');
+      hudToggleBtn?.querySelector('.icon-hud-hide')?.classList.remove('hidden');
+      hudToggleBtn?.querySelector('.icon-hud-show')?.classList.add('hidden');
+    } else if (!this.audioEl.paused) {
+      this.scheduleCinematicIdle();
+    }
+  }
+
+  private clearCinematicTimer(): void {
+    if (this.cinematicIdleTimer) {
+      clearTimeout(this.cinematicIdleTimer);
+      this.cinematicIdleTimer = null;
+    }
+  }
+
+  private scheduleCinematicIdle(): void {
+    this.clearCinematicTimer();
+    if (this.displayMode !== 'cinematic') return;
+    const fsOverlay = document.getElementById('aml-fullscreen-player');
+    if (!fsOverlay || fsOverlay.classList.contains('hidden')) return;
+    this.cinematicIdleTimer = setTimeout(() => {
+      if (this.audioEl.paused) return;
+      fsOverlay.classList.add('hud-hidden');
+      const hudToggleBtn = document.getElementById('aml-toggle-hud-btn');
+      hudToggleBtn?.setAttribute('aria-pressed', 'true');
+      hudToggleBtn?.querySelector('.icon-hud-hide')?.classList.add('hidden');
+      hudToggleBtn?.querySelector('.icon-hud-show')?.classList.remove('hidden');
+    }, 4200);
+  }
+
+  private wakeCinematicChrome(): void {
+    if (this.displayMode !== 'cinematic') return;
+    const fsOverlay = document.getElementById('aml-fullscreen-player');
+    if (!fsOverlay) return;
+    fsOverlay.classList.remove('hud-hidden');
+    const hudToggleBtn = document.getElementById('aml-toggle-hud-btn');
+    hudToggleBtn?.setAttribute('aria-pressed', 'false');
+    hudToggleBtn?.querySelector('.icon-hud-hide')?.classList.remove('hidden');
+    hudToggleBtn?.querySelector('.icon-hud-show')?.classList.add('hidden');
+    this.scheduleCinematicIdle();
   }
 
   private showIslamicBackgroundSlide(index: number, immediate = false): void {
@@ -1172,7 +1325,9 @@ export class QuranPlayerController {
       }
     };
     document.getElementById('qp-play-toggle-btn')?.addEventListener('click', togglePlay);
-    document.getElementById('aml-play-btn')?.addEventListener('click', togglePlay);
+    // AeroUI play button: listen for pressend event
+    const amlPlayBtn = document.getElementById('aml-play-btn');
+    amlPlayBtn?.addEventListener('pressend', togglePlay);
 
     const stepAyah = (delta: -1 | 1) => {
       const target = Math.max(1, this.activeAyahNumber + delta);
@@ -1180,8 +1335,19 @@ export class QuranPlayerController {
     };
     document.getElementById('qp-prev-ayah-btn')?.addEventListener('click', () => stepAyah(-1));
     document.getElementById('qp-next-ayah-btn')?.addEventListener('click', () => stepAyah(1));
-    document.getElementById('aml-prev-btn')?.addEventListener('click', () => stepAyah(-1));
-    document.getElementById('aml-next-btn')?.addEventListener('click', () => stepAyah(1));
+    // AeroUI prev/next: listen for pressend, trigger skip animation
+    const prevBtn = document.getElementById('aml-prev-btn');
+    const nextBtn = document.getElementById('aml-next-btn');
+    const prevSkip = prevBtn?.querySelector('.aero-skip');
+    const nextSkip = nextBtn?.querySelector('.aero-skip');
+    prevBtn?.addEventListener('pressend', () => {
+      if (prevSkip) (window as any).playSkip?.(prevSkip, { bouncing: true });
+      stepAyah(-1);
+    });
+    nextBtn?.addEventListener('pressend', () => {
+      if (nextSkip) (window as any).playSkip?.(nextSkip, { bouncing: true });
+      stepAyah(1);
+    });
 
     const cycleSpeed = () => {
       this.speedIndex = (this.speedIndex + 1) % this.speeds.length;
@@ -1224,24 +1390,63 @@ export class QuranPlayerController {
     const bindScrubber = (scrubberId: string) => {
       const el = document.getElementById(scrubberId);
       if (!el) return;
-      el.addEventListener('click', (e) => {
-        const rect = el.getBoundingClientRect();
-        const isRtl = getComputedStyle(el).direction === 'rtl';
-        const rawRatio = (e.clientX - rect.left) / Math.max(1, rect.width);
-        const ratio = Math.max(0, Math.min(1, isRtl ? 1 - rawRatio : rawRatio));
-        if (this.audioEl.duration > 0) {
-          this.audioEl.currentTime = ratio * this.audioEl.duration;
-          this.startSyncLoop();
+      const maxValue = Number(el.dataset.max ?? 1000);
+      // AeroUI elastic slider: listen for input (drag) and change (release)
+      el.addEventListener('input', (e: Event) => {
+        const value = (e as CustomEvent<{ value: number }>).detail?.value;
+        if (value !== undefined && this.audioEl.duration > 0) {
+          this.audioEl.currentTime = (value / maxValue) * this.audioEl.duration;
         }
+      });
+      el.addEventListener('change', () => {
+        this.startSyncLoop();
       });
     };
     bindScrubber('qp-bar-scrubber');
     bindScrubber('aml-scrubber-track');
 
     const volSlider = document.getElementById('aml-volume-slider') as HTMLInputElement | null;
-    volSlider?.addEventListener('input', () => {
-      this.audioEl.volume = Number(volSlider.value);
+    const quranVolOut = document.getElementById('aml-quran-volume-val');
+    const ambientSlider = document.getElementById('aml-ambient-volume') as HTMLInputElement | null;
+    const ambientVolOut = document.getElementById('aml-ambient-volume-val');
+    const muteBtn = document.getElementById('aml-mute-btn');
+
+    const updateMuteVisual = () => {
+      const muted = this.audioEl.muted || this.audioEl.volume === 0;
+      muteBtn?.classList.toggle('active', muted);
+      muteBtn?.setAttribute('aria-pressed', String(muted));
+      muteBtn?.querySelector('.icon-vol-on')?.classList.toggle('hidden', muted);
+      muteBtn?.querySelector('.icon-vol-off')?.classList.toggle('hidden', !muted);
+    };
+
+    const applyQuranVolume = (volume: number, persist = false) => {
+      const clamped = Math.max(0, Math.min(1, volume));
+      this.audioEl.volume = clamped;
+      if (clamped > 0) this.audioEl.muted = false;
+      updateMuteVisual();
+      if (volSlider) volSlider.value = String(clamped);
+      if (quranVolOut) quranVolOut.textContent = `${Math.round(clamped * 100)}%`;
+      if (persist) writeSetting(SETTINGS_KEYS.quranVolume, clamped.toFixed(2));
+    };
+
+    const applyAmbientVolume = (volume: number, persist = false) => {
+      const clamped = Math.max(0, Math.min(1, volume));
+      getAmbientMixer().setMasterVolume(clamped);
+      if (ambientSlider) ambientSlider.value = String(clamped);
+      if (ambientVolOut) ambientVolOut.textContent = `${Math.round(clamped * 100)}%`;
+      if (persist) writeSetting(SETTINGS_KEYS.ambientVolume, clamped.toFixed(2));
+    };
+
+    volSlider?.addEventListener('input', () => applyQuranVolume(Number(volSlider.value), true));
+    ambientSlider?.addEventListener('input', () => applyAmbientVolume(Number(ambientSlider.value), true));
+    muteBtn?.addEventListener('click', () => {
+      this.audioEl.muted = !this.audioEl.muted;
+      updateMuteVisual();
     });
+
+    applyQuranVolume(Number(this.audioEl.volume));
+    applyAmbientVolume(getAmbientMixer().getMasterVolume());
+    updateMuteVisual();
 
     const updateOffsetLabel = () => {
       const lbl = document.getElementById('aml-sync-offset-label');
@@ -1271,7 +1476,10 @@ export class QuranPlayerController {
       if (!fsOverlay) return;
       fsOverlay.classList.remove('hidden');
       document.body.classList.add('aml-fullscreen-open');
+      this.applyQuranView();
+      this.applyDisplayMode();
       this.applyFullscreenBgMode();
+      this.scenes?.setPlaying(!this.audioEl.paused);
       if (!reducedMotion) {
         fsOverlay.animate(
           [
@@ -1296,6 +1504,12 @@ export class QuranPlayerController {
       // Always pause: the canvas is hidden, so leaving its rAF loop running
       // only burns CPU/GPU (and battery) in the background.
       this.dybgInstance?.pause?.();
+      this.scenes?.setPlaying(false);
+      this.clearCinematicTimer();
+      getAmbientMixer().playOnly(null);
+      document.getElementById('aml-scene-menu')?.classList.add('hidden');
+      document.getElementById('aml-more-panel')?.classList.add('hidden');
+      document.getElementById('aml-queue-panel')?.classList.add('hidden');
       if (!reducedMotion) {
         fsOverlay.animate(
           [
@@ -1336,18 +1550,24 @@ export class QuranPlayerController {
     };
     hudToggleBtn?.addEventListener('click', toggleFullscreenHud);
 
-    document.getElementById('aml-bg-mode-btn')?.addEventListener('click', () => {
-      if (this.fullscreenBgMode === 'dybg') {
-        this.fullscreenBgMode = 'islamic';
-      } else if (this.fullscreenBgMode === 'islamic') {
-        this.fullscreenBgMode = 'off';
-      } else {
-        this.fullscreenBgMode = 'dybg';
-      }
-      try {
-        localStorage.setItem('kalamalah_fs_bg_mode', this.fullscreenBgMode);
-      } catch {}
-      this.applyFullscreenBgMode();
+    const sceneMenu = document.getElementById('aml-scene-menu');
+    const bgModeBtn = document.getElementById('aml-bg-mode-btn');
+    const setSceneMenuOpen = (open: boolean) => {
+      sceneMenu?.classList.toggle('hidden', !open);
+      bgModeBtn?.setAttribute('aria-expanded', String(open));
+    };
+
+    bgModeBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setSceneMenuOpen(sceneMenu?.classList.contains('hidden') ?? false);
+    });
+
+    sceneMenu?.addEventListener('click', (e) => {
+      const opt = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-scene]');
+      if (!opt) return;
+      const scene = (opt.getAttribute('data-scene') as SceneId) || 'islamic';
+      this.setSceneMode(scene);
+      setSceneMenuOpen(false);
     });
 
     document.getElementById('aml-bg-next-btn')?.addEventListener('click', () => {
@@ -1357,29 +1577,152 @@ export class QuranPlayerController {
       }
     });
 
-    const transBtn = document.getElementById('aml-toggle-translation-btn');
-    transBtn?.addEventListener('click', () => {
-      this.showFullscreenTranslation = !this.showFullscreenTranslation;
-      transBtn.classList.toggle('active', this.showFullscreenTranslation);
-      this.renderFullscreenAyahsList();
-      this.rebindAnimator();
+    // ── More panel (sync, background image, text view, translation, repeat, download)
+    const moreBtn = document.getElementById('aml-more-btn');
+    const morePanel = document.getElementById('aml-more-panel');
+    const setMoreOpen = (open: boolean) => {
+      morePanel?.classList.toggle('hidden', !open);
+      moreBtn?.setAttribute('aria-expanded', String(open));
+    };
+    moreBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setMoreOpen(morePanel?.classList.contains('hidden') ?? false);
     });
+
+    // The repeat button is already wired to cycleRepeat above.
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (!target.closest('.aml-scene-pill-wrap')) setSceneMenuOpen(false);
+      if (!target.closest('#aml-more-panel') && !target.closest('#aml-more-btn')) setMoreOpen(false);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        setSceneMenuOpen(false);
+        setMoreOpen(false);
+      }
+    });
+
+    // ── Quran text view (vinyl mode when off)
+    const quranViewBtn = document.getElementById('aml-quran-view-btn');
+    quranViewBtn?.addEventListener('click', () => {
+      this.showQuranText = !this.showQuranText;
+      writeSetting(SETTINGS_KEYS.quranView, this.showQuranText ? '1' : '0');
+      this.applyQuranView();
+    });
+
+    // ── Sharing
+    const openShareModal = () => {
+      document.getElementById('shareModal')?.classList.remove('hidden');
+    };
+    document.getElementById('aml-share-btn')?.addEventListener('click', openShareModal);
+    document.getElementById('aml-head-share-btn')?.addEventListener('click', openShareModal);
+
+    // ── Translation & tajweed
+    const transBtn = document.getElementById('aml-toggle-translation-btn');
+    const applyTranslation = (enabled: boolean, persist = false, rerender = true) => {
+      this.showFullscreenTranslation = enabled;
+      transBtn?.classList.toggle('active', enabled);
+      transBtn?.setAttribute('aria-pressed', String(enabled));
+      if (persist) writeSetting(SETTINGS_KEYS.translation, enabled ? '1' : '0');
+      if (rerender) {
+        this.renderFullscreenAyahsList();
+        this.rebindAnimator();
+      }
+    };
+    transBtn?.addEventListener('click', () => applyTranslation(!this.showFullscreenTranslation, true));
 
     const tjBtn = document.getElementById('aml-toggle-tajweed-btn');
-    tjBtn?.addEventListener('click', () => {
-      this.showFullscreenTajweed = !this.showFullscreenTajweed;
-      tjBtn.classList.toggle('active', this.showFullscreenTajweed);
-      this.renderFullscreenAyahsList();
-      this.rebindAnimator();
+    const applyTajweed = (enabled: boolean, persist = false, rerender = true) => {
+      this.showFullscreenTajweed = enabled;
+      tjBtn?.classList.toggle('active', enabled);
+      tjBtn?.setAttribute('aria-pressed', String(enabled));
+      if (persist) writeSetting(SETTINGS_KEYS.tajweed, enabled ? '1' : '0');
+      if (rerender) {
+        this.renderFullscreenAyahsList();
+        this.rebindAnimator();
+      }
+    };
+    tjBtn?.addEventListener('click', () => applyTajweed(!this.showFullscreenTajweed, true));
+
+    // ── Ayah queue
+    const queueBtn = document.getElementById('aml-queue-btn');
+    const queuePanel = document.getElementById('aml-queue-panel');
+    const queueList = document.getElementById('aml-queue-list');
+    const setQueueOpen = (open: boolean) => {
+      queuePanel?.classList.toggle('hidden', !open);
+      queueBtn?.setAttribute('aria-expanded', String(open));
+      if (open) this.renderQueuePanel();
+    };
+    const escapeText = (value: string) =>
+      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    queueBtn?.addEventListener('click', () => {
+      setMoreOpen(false);
+      setQueueOpen(queuePanel?.classList.contains('hidden') ?? false);
+    });
+    document.getElementById('aml-queue-close-btn')?.addEventListener('click', () => setQueueOpen(false));
+    queueList?.addEventListener('click', (e) => {
+      const item = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-queue-ayah]');
+      if (!item) return;
+      const ayah = Number(item.getAttribute('data-queue-ayah') || 0);
+      if (ayah > 0) this.seekToAyah(ayah, true);
+      setQueueOpen(false);
     });
 
-    document.getElementById('aml-bookmark-ayah-btn')?.addEventListener('click', () => {
+    // ── Settings sheet events
+    window.addEventListener('kalamalah:scene-changed', (e: Event) => {
+      const detail = (e as CustomEvent<{ scene: SceneId }>).detail;
+      if (detail?.scene) this.setSceneMode(detail.scene, false);
+    });
+    window.addEventListener('kalamalah:quran-view-changed', (e: Event) => {
+      this.showQuranText = (e as CustomEvent<{ enabled: boolean }>).detail?.enabled !== false;
+      this.applyQuranView();
+    });
+    window.addEventListener('kalamalah:translation-changed', (e: Event) => {
+      applyTranslation((e as CustomEvent<{ enabled: boolean }>).detail?.enabled !== false, false, true);
+    });
+    window.addEventListener('kalamalah:tajweed-changed', (e: Event) => {
+      applyTajweed((e as CustomEvent<{ enabled: boolean }>).detail?.enabled === true, false, true);
+    });
+    window.addEventListener('kalamalah:display-mode-changed', (e: Event) => {
+      this.displayMode = (e as CustomEvent<{ mode: string }>).detail?.mode === 'cinematic' ? 'cinematic' : 'default';
+      this.applyDisplayMode();
+    });
+    window.addEventListener('kalamalah:reduce-motion-changed', (e: Event) => {
+      const enabled = (e as CustomEvent<{ enabled: boolean }>).detail?.enabled === true;
+      this.scenes?.setMotionAllowed(!enabled);
+    });
+    window.addEventListener('kalamalah:quran-volume-changed', (e: Event) => {
+      const volume = Number((e as CustomEvent<{ volume: number }>).detail?.volume);
+      if (Number.isFinite(volume)) applyQuranVolume(volume);
+    });
+    window.addEventListener('kalamalah:ambient-volume-changed', (e: Event) => {
+      const volume = Number((e as CustomEvent<{ volume: number }>).detail?.volume);
+      if (Number.isFinite(volume)) applyAmbientVolume(volume);
+    });
+
+    // Cinematic mode reveals the chrome on interaction, then fades it again.
+    fsOverlay?.addEventListener('pointermove', () => this.wakeCinematicChrome());
+    fsOverlay?.addEventListener('touchstart', () => this.wakeCinematicChrome(), { passive: true });
+    fsOverlay?.addEventListener('click', () => this.wakeCinematicChrome());
+
+    // ── Bookmarks (desktop metadata row + mobile head)
+    const bookmarkCurrentAyah = () => {
       const sMeta = this.catalog.surahs.find((s) => s.n === this.currentSurahNumber);
       const aData = this.currentAyahsData.find((a) => a.n === this.activeAyahNumber);
       if (sMeta && aData) {
         toggleBookmarkAyah(sMeta.n, sMeta.ar, aData.n, aData.text);
       }
-    });
+    };
+    document.getElementById('aml-bookmark-ayah-btn')?.addEventListener('click', bookmarkCurrentAyah);
+    document.getElementById('aml-head-bookmark-btn')?.addEventListener('click', bookmarkCurrentAyah);
+
+    // Initial visual state
+    transBtn?.classList.toggle('active', this.showFullscreenTranslation);
+    tjBtn?.classList.toggle('active', this.showFullscreenTajweed);
+    this.applyQuranView();
+    this.applyDisplayMode();
 
     document.getElementById('aml-ayahs-list')?.addEventListener('click', (e) => {
       const wordEl = (e.target as HTMLElement | null)?.closest<HTMLElement>('.aml-word');

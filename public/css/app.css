@@ -925,9 +925,14 @@ html[dir="ltr"] .mobile-nav-sidebar {
 }
 
 @media (max-width: 1024px) {
-  .primary-nav,
-  .header-actions {
+  .primary-nav {
     display: none !important;
+  }
+  .header-actions {
+    display: inline-flex !important;
+  }
+  .header-actions > *:not(#header-settings-btn) {
+    display: none;
   }
 
   .mobile-nav-toggle-btn {

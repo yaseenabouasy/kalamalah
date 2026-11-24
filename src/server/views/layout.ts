@@ -346,7 +346,9 @@ export function renderLayout(props: LayoutProps): string {
   <!-- Application Stylesheets -->
   <link rel="stylesheet" href="/css/searchable-dropdown.css" />
   <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/css/aeroui.css" />
   <link rel="stylesheet" href="/css/fullscreen-player.css" />
+  <link rel="stylesheet" href="/css/settings-sheet.css" />
 
   <!-- Early Theme Initialization (Auto from browser if unset, Dark/Light toggleable) -->
   <script>
@@ -420,8 +422,12 @@ export function renderLayout(props: LayoutProps): string {
         </a>
       </nav>
 
-      <!-- Header Clean Icon Actions (Theme / Language / Bookmarks) -->
+      <!-- Header Clean Icon Actions (Settings / Theme / Language / Bookmarks) -->
       <div class="header-actions">
+        <button type="button" id="header-settings-btn" class="header-clean-icon-btn" data-open-settings title="Settings" aria-label="Settings" aria-haspopup="dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+
         <button type="button" id="header-theme-btn" class="header-clean-icon-btn" title="Toggle theme" aria-label="Toggle theme">
           <svg class="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
           <svg class="theme-icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
@@ -487,6 +493,11 @@ export function renderLayout(props: LayoutProps): string {
           <div class="mobile-sidebar-section">
             <span class="mobile-section-title">الأدوات والإعدادات</span>
             <div class="mobile-sidebar-actions-grid">
+              <button type="button" class="mobile-action-pill" data-open-settings>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span>الإعدادات</span>
+              </button>
+
               <button type="button" class="mobile-action-pill" data-open-about-dev>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>
                 <span>عن المطور (ياسين أبوعاصي)</span>
@@ -797,31 +808,78 @@ export function renderLayout(props: LayoutProps): string {
       <div class="aml-islamic-vignette"></div>
     </div>
 
-    <!-- Top-Left Pill: Close Fullscreen -->
-    <div class="pc-top-left-pill-bar">
-      <button type="button" id="aml-corner-close-btn" class="pc-pill-btn" title="إغلاق (Esc)" aria-label="إغلاق">
-        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
+    <!-- Rain / Forest photographic scenes (video loops with poster fallback) -->
+    <div class="aml-scene-layer" id="aml-scene-rain" data-scene-layer="rain" aria-hidden="true">
+      <div class="aml-scene-poster" style="background-image: url('/media/scenes/rain-poster.webp')"></div>
+    </div>
+    <div class="aml-scene-layer" id="aml-scene-forest" data-scene-layer="forest" aria-hidden="true">
+      <div class="aml-scene-poster" style="background-image: url('/media/scenes/forest-poster.webp')"></div>
     </div>
 
     <!-- Mobile Grabber Pill -->
     <button type="button" id="aml-close-fullscreen-btn" class="aml-sheet-handle" title="إغلاق العرض الكامل (Esc)" aria-label="إغلاق العرض الكامل"></button>
 
-    <!-- Top-Right Bar (Sync Offset Pill + Volume Capsule like main/player.html) -->
-    <div class="pc-top-volume-bar" dir="ltr">
-      <div class="pc-sync-offset-pill" title="ضبط التزامن بالمللي ثانية">
-        <button type="button" class="pc-sync-btn-step" id="aml-sync-minus-btn" aria-label="تقديم التزامن -100ms">−</button>
-        <span class="pc-sync-label" id="aml-sync-offset-label">0ms</span>
-        <button type="button" class="pc-sync-btn-step" id="aml-sync-plus-btn" aria-label="تأخير التزامن +100ms">+</button>
+    <!-- Top Bar: close on the left, background scene pill + settings on the right -->
+    <div class="aml-top-bar" dir="ltr">
+      <div class="pc-top-left-pill-bar">
+        <button type="button" id="aml-corner-close-btn" class="pc-pill-btn" title="إغلاق (Esc)" aria-label="إغلاق">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
 
-      <button type="button" id="aml-bg-mode-btn" class="pc-dock-pill-btn active" title="تغيير نوع الخلفية (الكعبة والحرمين / ديناميكية / إيقاف)">الخلفية: الكعبة والحرمين</button>
-      <button type="button" id="aml-bg-next-btn" class="pc-dock-pill-btn" title="تبديل صورة الخلفية الإسلامية" aria-label="الصورة التالية">↻</button>
-      <button type="button" id="aml-toggle-translation-btn" class="pc-dock-pill-btn active" data-i18n="btnTranslation" title="إظهار / إخفاء الترجمة">الترجمة</button>
-      <button type="button" id="aml-toggle-tajweed-btn" class="pc-dock-pill-btn" data-i18n="btnTajweed" title="تلوين أحكام التجويد">التجويد</button>
+      <div class="aml-top-right-cluster">
+        <div class="aml-scene-pill-wrap">
+          <button type="button" id="aml-bg-mode-btn" class="aml-scene-pill" aria-haspopup="menu" aria-expanded="false" aria-controls="aml-scene-menu" title="اختر مشهد الخلفية">
+            <span class="aml-scene-pill-dot" aria-hidden="true"></span>
+            <span id="aml-bg-mode-label">الخلفية: الكعبة والحرمين</span>
+            <svg class="aml-scene-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div id="aml-scene-menu" class="aml-scene-menu hidden" role="menu" aria-label="مشهد الخلفية">
+            <button type="button" class="aml-scene-option is-active" role="menuitemradio" aria-checked="true" data-scene="islamic">
+              <span class="aml-scene-swatch is-islamic" aria-hidden="true"></span><span>الكعبة والحرمين</span>
+            </button>
+            <button type="button" class="aml-scene-option" role="menuitemradio" aria-checked="false" data-scene="rain">
+              <span class="aml-scene-swatch is-rain" aria-hidden="true"></span><span>مطر</span>
+            </button>
+            <button type="button" class="aml-scene-option" role="menuitemradio" aria-checked="false" data-scene="forest">
+              <span class="aml-scene-swatch is-forest" aria-hidden="true"></span><span>غابة</span>
+            </button>
+            <button type="button" class="aml-scene-option" role="menuitemradio" aria-checked="false" data-scene="dybg">
+              <span class="aml-scene-swatch is-dybg" aria-hidden="true"></span><span>ديناميكية</span>
+            </button>
+            <button type="button" class="aml-scene-option" role="menuitemradio" aria-checked="false" data-scene="off">
+              <span class="aml-scene-swatch is-off" aria-hidden="true"></span><span>بدون خلفية</span>
+            </button>
+          </div>
+        </div>
+
+        <button type="button" id="aml-settings-btn" class="aml-round-icon-btn" data-open-settings title="الإعدادات" aria-label="الإعدادات">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Compact track head (mobile only; desktop keeps the artwork column) -->
+    <div class="aml-mobile-head" dir="rtl">
+      <img id="aml-head-avatar" class="aml-head-avatar" src="/images/round-logo.png" alt="" width="44" height="44" />
+      <div class="aml-head-text">
+        <span id="aml-head-surah" class="aml-head-surah">سورة الفاتحة</span>
+        <a id="aml-head-reciter" class="aml-head-reciter" href="/reciters">القارئ</a>
+      </div>
+      <div class="aml-head-actions">
+        <button type="button" id="aml-head-bookmark-btn" class="favorite-button" title="حفظ الآية الحالية" aria-label="حفظ الآية">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.9 5.88 6.49.94-4.7 4.58 1.11 6.46L12 17.8l-5.8 3.06 1.1-6.46-4.69-4.58 6.49-.94z"/></svg>
+        </button>
+        <button type="button" id="aml-head-share-btn" class="favorite-button" title="مشاركة التلاوة" aria-label="مشاركة التلاوة">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/></svg>
+        </button>
+      </div>
     </div>
 
     <!-- ContentBox (1:1 LyricsFlow Layout: NowBar on side + LyricsContainer) -->
@@ -845,67 +903,113 @@ export function renderLayout(props: LayoutProps): string {
               <a id="aml-now-reciter-link" href="/reciter-haitham-al-dukhin" class="Artists">القارئ هيثم الدخين</a>
             </div>
             <div class="MetadataActions">
-              <a id="aml-download-surah-btn" href="/api/download/haitham-al-dukhin/1" class="favorite-button" title="تحميل تلاوة السورة (MP3)" aria-label="تحميل السورة MP3">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </a>
+              <button type="button" id="aml-share-btn" class="favorite-button" title="مشاركة التلاوة" aria-label="مشاركة التلاوة">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/></svg>
+              </button>
               <button type="button" id="aml-bookmark-ayah-btn" class="favorite-button" title="حفظ الآية الحالية" aria-label="حفظ الآية">
                 <img src="/icons/favorite.svg" alt="Favorite" width="22" height="22" />
               </button>
             </div>
           </div>
 
-          <!-- Integrated Progress Bar (AeroUI elastic slider from main/player.html) -->
+          <!-- Transport: speed / previous / play / next / more -->
+          <div class="NowBarControls" dir="ltr">
+            <button type="button" id="aml-speed-cycle-btn" class="playback-control speed-txt" title="سرعة التلاوة">1x</button>
+
+            <!-- Previous: AeroUI player button with backward skip label -->
+            <button type="button" id="aml-prev-btn" class="aero-player" aria-label="الآية السابقة" data-interval="0.1">
+              <span class="aero-skip" data-direction="backward"></span>
+            </button>
+
+            <!-- Play/Pause: AeroUI player button with icon swap -->
+            <button type="button" id="aml-play-btn" class="aero-player aero-player--circle" aria-label="تشغيل" data-interval="0.1">
+              <span class="aero-player-label">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 6.8 4 17.2Q4 21 7.31 19.14L18.26 12.98Q20 12 18.26 11.02L7.31 4.86Q4 3 4 6.8Z"/></svg>
+              </span>
+            </button>
+
+            <!-- Next: AeroUI player button with forward skip label -->
+            <button type="button" id="aml-next-btn" class="aero-player" aria-label="الآية التالية" data-interval="0.1">
+              <span class="aero-skip" data-direction="forward"></span>
+            </button>
+
+            <button type="button" id="aml-more-btn" class="playback-control more-trigger" title="خيارات إضافية" aria-label="خيارات إضافية" aria-expanded="false" aria-controls="aml-more-panel">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>
+            </button>
+          </div>
+
+          <!-- Seek bar (AeroUI elastic slider) -->
           <div class="NowBarProgress" dir="ltr">
-            <div class="aero-elastic" id="aml-scrubber-track" data-min="0" data-max="1000" data-value="0" data-step="1" data-labels="bottom" data-stretch="0" role="slider" aria-label="شريط وقت التلاوة" tabindex="0">
+            <div class="aero-elastic" id="aml-scrubber-track" data-min="0" data-max="1000" data-value="0" data-step="1" data-labels="bottom" data-stretch="9" data-sync-labels role="slider" aria-label="شريط وقت التلاوة" tabindex="0">
+              <span class="aero-elastic-label progress-time" id="aml-current-time">0:00</span>
               <div class="aero-elastic-track">
                 <div class="aero-elastic-fill" id="aml-scrubber-fill" style="width: 0%"></div>
               </div>
-              <div class="aero-elastic-labels">
-                <span class="aero-elastic-label progress-time" id="aml-current-time">0:00</span>
-                <span class="aero-elastic-label progress-time" id="aml-remaining-time">-0:00</span>
-              </div>
+              <span class="aero-elastic-label progress-time" id="aml-remaining-time">-0:00</span>
             </div>
           </div>
 
-          <!-- Integrated Playback Controls (AeroUI player-button & skip-label from main/player.html) -->
-          <div class="NowBarControls" dir="ltr">
-            <button type="button" id="aml-repeat-btn" class="playback-control repeat" title="تكرار التلاوة" aria-label="تكرار">
-              <img id="aml-repeat-icon" src="/icons/repeat.svg" alt="Repeat" />
+          <!-- Toolbar: mute / tajweed / cast / queue -->
+          <div class="aml-toolbar-row" dir="ltr">
+            <button type="button" id="aml-mute-btn" class="aml-tool-btn" title="كتم صوت التلاوة" aria-label="كتم صوت التلاوة" aria-pressed="false">
+              <svg class="icon-vol-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+              <svg class="icon-vol-off hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
             </button>
 
-            <button type="button" id="aml-prev-btn" class="playback-control aero-player skip-back" title="الآية السابقة" aria-label="الآية السابقة">
-              <span class="aero-skip" data-direction="backward" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 4 L11 12 L19 20 Z M11 4 L3 12 L11 20 Z"/></svg></span>
+            <button type="button" id="aml-toggle-tajweed-btn" class="aml-tool-btn aml-tool-tajweed" data-i18n-title="btnTajweed" title="تلوين أحكام التجويد" aria-pressed="false">
+              <span aria-hidden="true">ت</span>
             </button>
 
-            <button type="button" id="aml-play-btn" class="playback-control aero-player play-pause" title="تشغيل / إيقاف" aria-label="تشغيل">
-              <svg class="icon-play" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
-                <path d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z" />
-              </svg>
-              <svg class="icon-pause hidden" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
-                <path d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z" />
-              </svg>
+            <button type="button" data-cast-btn class="aml-tool-btn" title="بث إلى جهاز" aria-label="بث إلى جهاز">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><path d="M2 12a9 9 0 0 1 8 8"/><path d="M2 16a5 5 0 0 1 4 4"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>
             </button>
 
-            <button type="button" id="aml-next-btn" class="playback-control aero-player skip-forward" title="الآية التالية" aria-label="الآية التالية">
-              <span class="aero-skip" data-direction="forward" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 4 L13 12 L5 20 Z M13 4 L21 12 L13 20 Z"/></svg></span>
+            <button type="button" id="aml-queue-btn" class="aml-tool-btn" title="قائمة الآيات" aria-label="قائمة الآيات" aria-expanded="false" aria-controls="aml-queue-panel">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             </button>
-
-            <button type="button" id="aml-speed-cycle-btn" class="playback-control speed-txt" title="سرعة التلاوة">1x</button>
           </div>
 
-          <!-- Volume Area (from main/player.html) -->
-          <div class="VolumeArea" dir="ltr">
-            <img src="/icons/volume_low.png" class="volume-side-icon" alt="Volume Low" />
-            <div class="volume-slider-wrapper">
-              <input type="range" id="aml-volume-slider" class="volume-slider" min="0" max="1" step="0.02" value="1" aria-label="مستوى الصوت" />
+          <!-- Mixer: Quran recitation + background sound (AeroUI volume sliders) -->
+          <div class="aml-mixer" dir="ltr">
+            <div class="aml-mixer-row aero-volume">
+              <span class="aml-mixer-label">القرآن</span>
+              <input type="range" id="aml-volume-slider" class="aero-volume-input" min="0" max="1" step="0.02" value="1" aria-label="مستوى صوت التلاوة" />
+              <span class="aml-mixer-value" id="aml-quran-volume-val">100%</span>
             </div>
-            <img src="/icons/volume_full.png" class="volume-side-icon" alt="Volume High" />
+            <div class="aml-mixer-row aero-volume">
+              <span class="aml-mixer-label">الصوت الخلفي</span>
+              <input type="range" id="aml-ambient-volume" class="aero-volume-input" min="0" max="1" step="0.02" value="0.35" aria-label="مستوى الصوت الخلفي" />
+              <span class="aml-mixer-value" id="aml-ambient-volume-val">35%</span>
+            </div>
+          </div>
+
+          <!-- More panel: sync, background image, text view, translation, repeat, download -->
+          <div id="aml-more-panel" class="aml-more-panel hidden">
+            <div class="pc-sync-offset-pill" title="ضبط التزامن بالمللي ثانية">
+              <button type="button" class="pc-sync-btn-step" id="aml-sync-minus-btn" aria-label="تقديم التزامن -100ms">−</button>
+              <span class="pc-sync-label" id="aml-sync-offset-label">0ms</span>
+              <button type="button" class="pc-sync-btn-step" id="aml-sync-plus-btn" aria-label="تأخير التزامن +100ms">+</button>
+            </div>
+            <button type="button" id="aml-bg-next-btn" class="aml-more-item" title="تبديل صورة الخلفية الإسلامية">↻ الصورة التالية</button>
+            <button type="button" id="aml-quran-view-btn" class="aml-more-item" aria-pressed="true">عرض نص القرآن</button>
+            <button type="button" id="aml-toggle-translation-btn" class="aml-more-item active" data-i18n="btnTranslation">الترجمة</button>
+            <button type="button" id="aml-repeat-btn" class="aml-more-item" aria-pressed="false">
+              <img id="aml-repeat-icon" src="/icons/repeat.svg" alt="" width="16" height="16" /> تكرار التلاوة
+            </button>
+            <a id="aml-download-surah-btn" href="/api/download/haitham-al-dukhin/1" class="aml-more-item" download>تحميل السورة MP3</a>
           </div>
         </div>
       </div>
 
       <!-- LyricsContainer (1:1 AMLL / LyricsFlow Spring-Physics --ty Track) -->
       <div class="aml-lyrics-column LyricsContainer">
+        <!-- Vinyl / album-art mode, shown when the Quran text view is off -->
+        <div class="aml-vinyl-stage" id="aml-vinyl-stage" aria-hidden="true">
+          <div class="aml-vinyl-disc" id="aml-vinyl-disc">
+            <img id="aml-vinyl-art" class="aml-vinyl-art" src="/images/round-logo.png" alt="" />
+            <span class="aml-vinyl-hole" aria-hidden="true"></span>
+          </div>
+        </div>
         <div id="aml-scroll-container" class="aml-lyrics-scroll-container LyricsContent">
           <div id="aml-ayahs-list" class="aml-ayahs-list lyrics-track">
             <p class="aml-empty-msg">اختر سورة أو اضغط على زر التشغيل لبدء التلاوة المتزامنة بالآيات والكلمات.</p>
@@ -914,12 +1018,133 @@ export function renderLayout(props: LayoutProps): string {
       </div>
     </div>
 
+    <!-- Ayah queue (opened from the player toolbar) -->
+    <div id="aml-queue-panel" class="aml-queue-panel hidden" role="dialog" aria-modal="false" aria-label="قائمة الآيات">
+      <div class="aml-queue-head">
+        <span>قائمة الآيات</span>
+        <button type="button" id="aml-queue-close-btn" class="aml-queue-close" aria-label="إغلاق قائمة الآيات">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="aml-queue-list" class="aml-queue-list"></div>
+    </div>
+
     <!-- Bottom-Left Subtle Hide-HUD Toggle (Low Opacity) -->
     <button type="button" id="aml-toggle-hud-btn" class="aml-hud-toggle-btn" title="Hide / Show Controls (H)" aria-label="Hide or show player controls" aria-pressed="false">
       <svg class="icon-hud-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
       <svg class="icon-hud-show hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
     </button>
   </section>
+
+  <!-- Shared Settings Sheet (desktop right drawer / mobile bottom sheet) -->
+  <div id="settingsSheet" class="settings-sheet-backdrop hidden" aria-hidden="true">
+    <div class="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-sheet-title">
+      <div class="settings-sheet-head">
+        <div>
+          <h2 id="settings-sheet-title" data-settings-label="settingsTitle">الإعدادات</h2>
+          <p data-settings-label="settingsSubtitle">النص والعرض والخلفية</p>
+        </div>
+        <button type="button" class="settings-sheet-close" data-settings-close aria-label="إغلاق الإعدادات">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="settings-sheet-body">
+        <section class="settings-group">
+          <h3 data-settings-label="settingsText">النص</h3>
+          <div class="settings-row">
+            <label class="settings-row-label" for="settings-font-scale" data-settings-label="fontSize">حجم الخط</label>
+            <output class="settings-row-value" id="settings-font-scale-val" for="settings-font-scale">100%</output>
+          </div>
+          <input type="range" id="settings-font-scale" min="75" max="160" step="5" value="100" aria-label="حجم خط القرآن" />
+          <div class="settings-seg" role="group" aria-label="نوع الخط" style="flex-wrap: wrap; gap: 4px;">
+            <button type="button" class="is-active" data-settings-font="uthmani">عثماني</button>
+            <button type="button" data-settings-font="kitab">كتاب</button>
+            <button type="button" data-settings-font="amiri">أميري</button>
+            <button type="button" data-settings-font="nastaleeq">نستعليق</button>
+          </div>
+        </section>
+
+        <section class="settings-group">
+          <h3 data-settings-label="settingsDisplay">العرض</h3>
+          <label class="settings-toggle-row" for="settings-quran-view">
+            <span data-settings-label="quranView">عرض نص القرآن</span>
+            <input type="checkbox" class="settings-switch" id="settings-quran-view" checked />
+          </label>
+          <label class="settings-toggle-row" for="settings-translation">
+            <span data-settings-label="translation">الترجمة</span>
+            <input type="checkbox" class="settings-switch" id="settings-translation" checked />
+          </label>
+          <label class="settings-toggle-row" for="settings-tajweed">
+            <span data-settings-label="tajweed">ألوان التجويد</span>
+            <input type="checkbox" class="settings-switch" id="settings-tajweed" />
+          </label>
+          <div class="settings-row" style="margin-top: 8px;">
+            <span class="settings-row-label" data-settings-label="diacritics">التشكيل</span>
+          </div>
+          <div class="settings-seg" role="group" aria-label="التشكيل">
+            <button type="button" class="is-active" data-settings-tashkeel="all" data-settings-label="diacriticsAll">كامل</button>
+            <button type="button" data-settings-tashkeel="rasm-only" data-settings-label="diacriticsRasm">الرسم فقط</button>
+          </div>
+          <div class="settings-row" style="margin-top: 14px;">
+            <span class="settings-row-label" data-settings-label="displayMode">وضع العرض</span>
+          </div>
+          <div class="settings-seg" role="group" aria-label="وضع العرض">
+            <button type="button" class="is-active" data-settings-display-mode="default" data-settings-label="displayDefault">افتراضي</button>
+            <button type="button" data-settings-display-mode="cinematic" data-settings-label="displayCinematic">سينمائي</button>
+          </div>
+        </section>
+
+        <section class="settings-group">
+          <h3 data-settings-label="settingsBackground">الخلفية والصوت</h3>
+          <div class="settings-row">
+            <span class="settings-row-label" data-settings-label="scene">مشهد الخلفية</span>
+          </div>
+          <div class="settings-scene-grid" role="group" aria-label="مشهد الخلفية">
+            <button type="button" class="settings-scene-opt is-active" data-settings-scene="islamic">
+              <span class="settings-scene-swatch is-islamic" aria-hidden="true"></span>
+              <span data-settings-label="sceneIslamic">الكعبة والحرمين</span>
+            </button>
+            <button type="button" class="settings-scene-opt" data-settings-scene="rain">
+              <span class="settings-scene-swatch is-rain" aria-hidden="true"></span>
+              <span data-settings-label="sceneRain">مطر</span>
+            </button>
+            <button type="button" class="settings-scene-opt" data-settings-scene="forest">
+              <span class="settings-scene-swatch is-forest" aria-hidden="true"></span>
+              <span data-settings-label="sceneForest">غابة</span>
+            </button>
+            <button type="button" class="settings-scene-opt" data-settings-scene="dybg">
+              <span class="settings-scene-swatch is-dybg" aria-hidden="true"></span>
+              <span data-settings-label="sceneDynamic">ديناميكية</span>
+            </button>
+            <button type="button" class="settings-scene-opt" data-settings-scene="off">
+              <span class="settings-scene-swatch is-off" aria-hidden="true"></span>
+              <span data-settings-label="sceneOff">بدون خلفية</span>
+            </button>
+          </div>
+
+          <label class="settings-toggle-row" for="settings-reduce-motion" style="margin-top: 10px;">
+            <span data-settings-label="reduceMotion">تقليل الحركة</span>
+            <input type="checkbox" class="settings-switch" id="settings-reduce-motion" />
+          </label>
+
+          <div class="settings-row" style="margin-top: 10px;">
+            <label class="settings-row-label" for="settings-quran-volume" data-settings-label="quranVolume">صوت التلاوة</label>
+            <output class="settings-row-value" id="settings-quran-volume-val" for="settings-quran-volume">100%</output>
+          </div>
+          <input type="range" id="settings-quran-volume" min="0" max="1" step="0.02" value="1" aria-label="مستوى صوت التلاوة" />
+
+          <div class="settings-row">
+            <label class="settings-row-label" for="settings-ambient-volume" data-settings-label="backgroundSound">الصوت الخلفي</label>
+            <output class="settings-row-value" id="settings-ambient-volume-val" for="settings-ambient-volume">35%</output>
+          </div>
+          <input type="range" id="settings-ambient-volume" min="0" max="1" step="0.02" value="0.35" aria-label="مستوى الصوت الخلفي" />
+        </section>
+
+        <button type="button" class="settings-reset-btn" id="settings-reset-btn" data-settings-label="resetDefaults">استعادة الافتراضي</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Bootstrap JSON Data for Instant Client Hydration -->
   <script id="kalamalah-bootstrap" type="application/json">${safeJsonForScript(clientCatalogBootstrap)}</script>
