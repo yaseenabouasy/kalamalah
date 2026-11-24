@@ -1,12 +1,12 @@
 {
   "name": "kalamalah-electron",
-  "version": "1.2.0",
+  "version": "1.2.7",
   "private": true,
   "author": "Yaseen Abouasy <yaseen@example.com>",
   "description": "Kalamalah Quran Player Desktop Client (Electron)",
   "main": "main.js",
   "homepage": "https://kalamalah.com",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yaseenabouasy/kalamalah.git"
@@ -40,8 +40,8 @@
   "dependencies": {
     "electron-updater": "^6.3.9",
     "electron-log": "^5.1.0",
-    "electron-store": "^10.0.0",
-    "@xhayper/discord-rpc": "^4.0.1"
+    "electron-store": "^8.2.0",
+    "@xhayper/discord-rpc": "^1.5.1"
   },
   "devDependencies": {
     "electron": "^33.2.0",
@@ -139,10 +139,5 @@
       "owner": "yaseenabouasy",
       "repo": "kalamalah"
     }
-  },
-  "devDependencies": {
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8",
-    "rimraf": "^5.0.5"
   }
 }

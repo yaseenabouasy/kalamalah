@@ -1,144 +1,143 @@
-const { app, BrowserWindow, Tray, Menu, dialog, shell, ipcMain, globalShortcut, powerSaveBlocker, nativeTheme } = require('electron');
+const {
+  app,
+  BrowserWindow,
+  Tray,
+  Menu,
+  dialog,
+  shell,
+  ipcMain,
+  globalShortcut,
+  powerSaveBlocker,
+} = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 const Store = require('electron-store');
-const { DiscordRPC } = require('@xhayper/discord-rpc');
+const { Client: DiscordClient } = require('@xhayper/discord-rpc');
+
+/**
+ * IMPORTANT: electron-store v9+ is ESM-only and cannot be require()d here.
+ * package.json pins ^8.x (CommonJS) for that reason.
+ */
 
 const APP_URL = process.env.KALAMALAH_URL || 'https://kalamalah.com';
-const CURRENT_VERSION = '1.2.0';
-const ICON_PATH = path.join(__dirname, '..', 'round-logo.png');
+const ICON_PATH = path.join(__dirname, 'round-logo.png');
 const IS_MAC = process.platform === 'darwin';
-const IS_DEV = process.env.NODE_ENV === 'development';
+const DISCORD_CLIENT_ID = process.env.KALAMALAH_DISCORD_CLIENT_ID || '';
 
-// Configure logging
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+const store = new Store({
+  name: 'settings',
+  defaults: {
+    windowBounds: { width: 1200, height: 820 },
+    windowMaximized: false,
+    discordRPCEnabled: true,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Logging / updater
+// ---------------------------------------------------------------------------
 log.transports.file.level = 'info';
 autoUpdater.logger = log;
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
-// Electron Store for settings
-const store = new Store({
-  defaults: {
-    windowBounds: { width: 1200, height: 820 },
-    windowMaximized: false,
-    theme: 'system',
-    playbackPosition: {},
-    discordRPCEnabled: true
-  }
-});
+let mainWindow = null;
+let tray = null;
+let isQuitting = false;
+let pendingDeepLink = null;
+let powerSaveBlockerId = null;
+let mediaKeysRegistered = false;
 
-// Discord RPC
+// ---------------------------------------------------------------------------
+// Discord Rich Presence
+// ---------------------------------------------------------------------------
 let discordRPC = null;
-let discordRPCReconnectTimer = null;
-const DISCORD_CLIENT_ID = '123456789012345678'; // Replace with your Discord app ID
+let discordReconnectTimer = null;
 
 function initDiscordRPC() {
+  if (!DISCORD_CLIENT_ID) return; // No app id configured -> stay silent
   if (!store.get('discordRPCEnabled')) return;
-  
+  if (discordRPC) return;
+
   try {
-    discordRPC = new DiscordRPC(DISCORD_CLIENT_ID, {
-      autoThreshold: 1000,
-      autoRetry: true,
-      autoReconnect: true
-    });
-    
+    discordRPC = new DiscordClient({ clientId: DISCORD_CLIENT_ID });
+
     discordRPC.on('ready', () => {
       log.info('Discord RPC connected');
-      updateDiscordPresence();
+      updateDiscordPresence({ page: 'Main Menu' });
     });
-    
+
     discordRPC.on('disconnected', () => {
       log.warn('Discord RPC disconnected');
+      discordRPC = null;
       scheduleDiscordReconnect();
     });
-    
-    discordRPC.on('error', (err) => {
-      log.error('Discord RPC error:', err);
-    });
-    
-    discordRPC.connect().catch(err => {
-      log.error('Discord RPC connection failed:', err);
+
+    discordRPC.login().catch((err) => {
+      log.warn('Discord RPC unavailable:', err?.message || err);
+      discordRPC = null;
       scheduleDiscordReconnect();
     });
   } catch (err) {
-    log.error('Failed to initialize Discord RPC:', err);
-  }
-}
-
-function scheduleDiscordReconnect() {
-  if (discordRPCReconnectTimer) clearTimeout(discordRPCReconnectTimer);
-  discordRPCReconnectTimer = setTimeout(() => {
-    if (store.get('discordRPCEnabled')) {
-      initDiscordRPC();
-    }
-  }, 30000);
-}
-
-function updateDiscordPresence(details = {}) {
-  if (!discordRPC) return;
-  
-  const state = details.reciter ? `Reciter: ${details.reciter}` : 'Browsing';
-  const detailsText = details.surah ? `Surah ${details.surah}` : (details.page || 'Main Menu');
-  
-  discordRPC.setActivity({
-    details: detailsText,
-    state: state,
-    largeImageKey: 'kalamalah-logo',
-    largeImageText: 'Kalamalah Quran Player',
-    smallImageKey: details.playing ? 'play' : 'pause',
-    smallImageText: details.playing ? 'Playing' : 'Paused',
-    instance: false,
-    buttons: [
-      { label: 'Open Kalamalah', url: 'https://kalamalah.com' }
-    ]
-  }).catch(err => log.error('Failed to update Discord presence:', err));
-}
-
-function stopDiscordRPC() {
-  if (discordRPCReconnectTimer) clearTimeout(discordRPCReconnectTimer);
-  if (discordRPC) {
-    discordRPC.destroy().catch(() => {});
+    log.warn('Failed to initialize Discord RPC:', err?.message || err);
     discordRPC = null;
   }
 }
 
-// Single instance lock
-const gotTheLock = app.requestSingleInstanceLock();
-
-if (!gotTheLock) {
-  app.quit();
-} else {
-  app.on('second-instance', (event, commandLine, workingDirectory) => {
-    // Someone tried to run a second instance, focus our window instead
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-      
-      // Handle deep link on Windows/Linux
-      const url = commandLine.find(arg => arg.startsWith('kalamalah://'));
-      if (url && mainWindow.webContents) {
-        mainWindow.webContents.send('deep-link', url);
-      }
-    }
-  });
+function scheduleDiscordReconnect() {
+  if (discordReconnectTimer) clearTimeout(discordReconnectTimer);
+  discordReconnectTimer = setTimeout(() => {
+    if (store.get('discordRPCEnabled')) initDiscordRPC();
+  }, 60000);
 }
 
-// Handle deep links (macOS)
-app.on('open-url', (event, url) => {
-  event.preventDefault();
-  if (mainWindow) {
-    mainWindow.webContents.send('deep-link', url);
+function updateDiscordPresence(details = {}) {
+  if (!discordRPC) return;
+
+  const state = details.reciter ? `Reciter: ${details.reciter}` : 'Browsing';
+  const detailsText = details.surah
+    ? `Surah ${details.surah}`
+    : details.page || 'Main Menu';
+
+  try {
+    discordRPC.user?.setActivity({
+      details: detailsText,
+      state,
+      largeImageKey: 'kalamalah-logo',
+      largeImageText: 'Kalamalah Quran Player',
+      smallImageKey: details.playing ? 'play' : 'pause',
+      smallImageText: details.playing ? 'Playing' : 'Paused',
+      instance: false,
+      buttons: [{ label: 'Open Kalamalah', url: 'https://kalamalah.com' }],
+    });
+  } catch (err) {
+    log.warn('Failed to update Discord presence:', err?.message || err);
   }
-});
+}
 
-// Power save blocker for audio playback
-let powerSaveBlockerId = null;
+function stopDiscordRPC() {
+  if (discordReconnectTimer) {
+    clearTimeout(discordReconnectTimer);
+    discordReconnectTimer = null;
+  }
+  try {
+    void discordRPC?.destroy()?.catch(() => {});
+  } catch {
+    /* ignore */
+  }
+  discordRPC = null;
+}
 
+// ---------------------------------------------------------------------------
+// Power save blocker
+// ---------------------------------------------------------------------------
 function enablePowerSaveBlocker() {
   if (powerSaveBlockerId === null) {
     powerSaveBlockerId = powerSaveBlocker.start('prevent-display-sleep');
-    log.info('Power save blocker enabled');
   }
 }
 
@@ -146,376 +145,439 @@ function disablePowerSaveBlocker() {
   if (powerSaveBlockerId !== null) {
     powerSaveBlocker.stop(powerSaveBlockerId);
     powerSaveBlockerId = null;
-    log.info('Power save blocker disabled');
   }
 }
 
-const APP_URL = process.env.KALAMALAH_URL || 'https://kalamalah.com';
-const CURRENT_VERSION = '1.2.0';
-const ICON_PATH = path.join(__dirname, '..', 'round-logo.png');
-const IS_MAC = process.platform === 'darwin';
+// ---------------------------------------------------------------------------
+// Navigation policy: kalamalah.com + subdomains stay in app, everything else
+// is handed to the OS default browser.
+// ---------------------------------------------------------------------------
+function isInternalUrl(rawUrl) {
+  try {
+    const { protocol, hostname } = new URL(rawUrl);
+    if (protocol !== 'https:' && protocol !== 'http:') return false;
+    return hostname === 'kalamalah.com' || hostname.endsWith('.kalamalah.com');
+  } catch {
+    return false;
+  }
+}
 
-let mainWindow = null;
-let tray = null;
-let mediaKeysRegistered = false;
+function openExternal(rawUrl) {
+  try {
+    void shell.openExternal(rawUrl);
+  } catch (err) {
+    log.warn('Failed to open external url:', err?.message || err);
+  }
+}
 
+function focusMainWindow() {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+// ---------------------------------------------------------------------------
+// Window
+// ---------------------------------------------------------------------------
 function createWindow() {
-  // Load saved window bounds
-  const savedBounds = store.get('windowBounds');
-  const savedMaximized = store.get('windowMaximized');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    focusMainWindow();
+    return;
+  }
+
+  const savedBounds = store.get('windowBounds') || {};
+  const shouldMaximize = Boolean(store.get('windowMaximized'));
 
   const windowOptions = {
-    width: savedBounds?.width || 1200,
-    height: savedBounds?.height || 820,
+    width: savedBounds.width || 1200,
+    height: savedBounds.height || 820,
+    x: savedBounds.x,
+    y: savedBounds.y,
     minWidth: 420,
     minHeight: 600,
-    x: savedBounds?.x,
-    y: savedBounds?.y,
     icon: ICON_PATH,
     title: 'Kalamalah Player',
     backgroundColor: '#09090b',
+    show: false,
+    frame: !IS_MAC,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
       preload: path.join(__dirname, 'preload.js'),
-      backgroundThrottling: false
+      backgroundThrottling: false,
     },
-    frame: !IS_MAC,
-    titleBarStyle: IS_MAC ? 'hiddenInset' : 'hidden',
-    trafficLightPosition: IS_MAC ? { x: 18, y: 18 } : undefined,
-    vibrancy: IS_MAC ? 'under-window' : undefined,
-    visualEffectState: IS_MAC ? 'active' : undefined,
-    show: false
   };
 
-  if (savedMaximized) {
-    windowOptions.maximizable = true;
+  if (IS_MAC) {
+    windowOptions.titleBarStyle = 'hiddenInset';
+    windowOptions.trafficLightPosition = { x: 16, y: 16 };
+    windowOptions.vibrancy = 'under-window';
+    windowOptions.visualEffectState = 'active';
   }
 
   mainWindow = new BrowserWindow(windowOptions);
 
-  if (savedMaximized) {
-    mainWindow.maximize();
-  }
+  if (shouldMaximize) mainWindow.maximize();
 
-  // Handle macOS traffic light buttons
-  if (IS_MAC) {
-    mainWindow.setWindowButtonVisibility(true);
-  }
+  const persistBounds = () => {
+    if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMaximized()) return;
+    store.set('windowBounds', mainWindow.getBounds());
+  };
 
-  // Handle window state changes
-  mainWindow.on('resize', () => {
-    if (!mainWindow.isMaximized()) {
-      store.set('windowBounds', mainWindow.getBounds());
-    }
-  });
-
-  mainWindow.on('move', () => {
-    if (!mainWindow.isMaximized()) {
-      store.set('windowBounds', mainWindow.getBounds());
-    }
-  });
+  mainWindow.on('resize', persistBounds);
+  mainWindow.on('move', persistBounds);
 
   mainWindow.on('maximize', () => {
     store.set('windowMaximized', true);
-    mainWindow.webContents.send('window:maximized', true);
+    mainWindow?.webContents.send('window:maximized', true);
   });
 
   mainWindow.on('unmaximize', () => {
     store.set('windowMaximized', false);
-    mainWindow.webContents.send('window:maximized', false);
+    mainWindow?.webContents.send('window:maximized', false);
   });
 
-  // Handle window close
-  mainWindow.on('close', (e) => {
-    if (process.platform !== 'darwin') {
-      e.preventDefault();
+  // Close -> hide to tray, except on macOS or when actually quitting.
+  mainWindow.on('close', (event) => {
+    if (!isQuitting && !IS_MAC && tray) {
+      event.preventDefault();
       mainWindow.hide();
     }
   });
 
-  // Load the app URL
-  mainWindow.loadURL(APP_URL);
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 
-  // Handle kalamalah.com and subdomains - open in app
-  // External domains - open in default browser
-  const handleNavigation = (url) => {
-    try {
-      const urlObj = new URL(url);
-      const hostname = urlObj.hostname;
-      
-      // Allow kalamalah.com and all subdomains
-      if (hostname === 'kalamalah.com' || hostname.endsWith('.kalamalah.com')) {
-        return { action: 'allow' };
-      }
-      
-      // External domains - open in default browser
-      shell.openExternal(url);
-      return { action: 'deny' };
-    } catch {
-      // Invalid URL - deny
-      return { action: 'deny' };
+  // Keep third-party links out of the app shell.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (isInternalUrl(url)) {
+      void mainWindow?.loadURL(url);
+    } else {
+      openExternal(url);
     }
-  };
+    return { action: 'deny' };
+  });
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => handleNavigation(url));
-
-  // Handle will-navigate for main frame navigation
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const decision = handleNavigation(url);
-    if (decision.action === 'deny') {
-      event.preventDefault();
-    }
+    if (isInternalUrl(url)) return;
+    event.preventDefault();
+    openExternal(url);
   });
 
-  // Handle new window creation (target="_blank" etc)
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => handleNavigation(url));
+  // Offline fallback so a dead network does not leave a blank window.
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    if (!isMainFrame || errorCode === -3 /* aborted */) return;
+    log.warn('Failed to load:', validatedURL, errorCode, errorDescription);
+    if (!mainWindow || mainWindow.isDestroyed()) return;
 
-  // Window controls IPC
+    const offline = `<!doctype html><html><head><meta charset="utf-8">
+      <title>Kalamalah — offline</title>
+      <style>
+        body{margin:0;height:100vh;display:grid;place-items:center;background:#09090b;color:#e8e1d3;
+             font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;text-align:center}
+        h1{font-size:20px;margin:0 0 8px;font-weight:600}
+        p{margin:0 0 24px;opacity:.65;max-width:32ch}
+        button{font:inherit;padding:10px 20px;border-radius:10px;border:1px solid #3a3a3a;
+               background:#17171b;color:inherit;cursor:pointer}
+        button:hover{background:#22222a}
+      </style></head><body><main>
+      <h1>Can't reach Kalamalah</h1>
+      <p>Check your connection and try again.</p>
+      <button onclick="location.replace(${JSON.stringify(APP_URL)})">Retry</button>
+      </main></body></html>`;
+
+    void mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(offline)}`);
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show();
+    flushPendingDeepLink();
+  });
+
+  void mainWindow.loadURL(APP_URL);
+}
+
+// ---------------------------------------------------------------------------
+// Deep links
+// ---------------------------------------------------------------------------
+function sendDeepLink(url) {
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isLoading()) {
+    mainWindow.webContents.send('deep-link', url);
+  } else {
+    pendingDeepLink = url;
+  }
+}
+
+function flushPendingDeepLink() {
+  if (!pendingDeepLink || !mainWindow) return;
+  const url = pendingDeepLink;
+  pendingDeepLink = null;
+  sendDeepLink(url);
+}
+
+function extractDeepLink(argv) {
+  return argv.find((arg) => arg.startsWith('kalamalah://')) || null;
+}
+
+// ---------------------------------------------------------------------------
+// IPC (registered once)
+// ---------------------------------------------------------------------------
+function registerIpc() {
   ipcMain.on('window:minimize', () => mainWindow?.minimize());
+
   ipcMain.on('window:maximize', () => {
-    if (mainWindow?.isMaximized()) mainWindow.unmaximize();
-    else mainWindow?.maximize();
+    if (!mainWindow) return;
+    if (mainWindow.isMaximized()) mainWindow.unmaximize();
+    else mainWindow.maximize();
   });
+
   ipcMain.on('window:close', () => mainWindow?.close());
   ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
   ipcMain.handle('window:getBounds', () => mainWindow?.getBounds() ?? {});
-  ipcMain.on('window:setBounds', (_, bounds) => mainWindow?.setBounds(bounds));
 
-  // Discord RPC control
-  ipcMain.handle('discord:getStatus', () => ({ enabled: store.get('discordRPCEnabled') }));
-  ipcMain.on('discord:setEnabled', (_, enabled) => {
-    store.set('discordRPCEnabled', enabled);
-    if (enabled) {
-      initDiscordRPC();
-    } else {
-      stopDiscordRPC();
-    }
+  // Navigation (used by an optional custom toolbar)
+  ipcMain.handle('nav:canGoBack', () => mainWindow?.webContents.canGoBack() ?? false);
+  ipcMain.handle('nav:canGoForward', () => mainWindow?.webContents.canGoForward() ?? false);
+  ipcMain.on('nav:back', () => {
+    if (mainWindow?.webContents.canGoBack()) mainWindow.webContents.goBack();
   });
-  ipcMain.on('discord:updatePresence', (_, details) => updateDiscordPresence(details));
+  ipcMain.on('nav:forward', () => {
+    if (mainWindow?.webContents.canGoForward()) mainWindow.webContents.goForward();
+  });
+  ipcMain.on('nav:reload', () => mainWindow?.webContents.reload());
+  ipcMain.on('nav:home', () => void mainWindow?.loadURL(APP_URL));
 
-  // Power save blocker control
-  ipcMain.on('powerSave:enable', () => enablePowerSaveBlocker());
-  ipcMain.on('powerSave:disable', () => disablePowerSaveBlocker());
+  ipcMain.handle('discord:getStatus', () => ({
+    enabled: Boolean(store.get('discordRPCEnabled')),
+    connected: Boolean(discordRPC),
+    configured: Boolean(DISCORD_CLIENT_ID),
+  }));
 
-  // Auto-updater
-  ipcMain.handle('updater:check', () => autoUpdater.checkForUpdates());
+  ipcMain.on('discord:setEnabled', (_event, enabled) => {
+    store.set('discordRPCEnabled', Boolean(enabled));
+    if (enabled) initDiscordRPC();
+    else stopDiscordRPC();
+  });
+
+  ipcMain.on('discord:updatePresence', (_event, details) => updateDiscordPresence(details));
+
+  ipcMain.on('powerSave:enable', enablePowerSaveBlocker);
+  ipcMain.on('powerSave:disable', disablePowerSaveBlocker);
+
+  ipcMain.handle('updater:check', () => checkForUpdates());
   ipcMain.handle('updater:download', () => autoUpdater.downloadUpdate());
-  ipcMain.handle('updater:install', () => autoUpdater.quitAndInstall());
-  ipcMain.handle('updater:getVersion', () => CURRENT_VERSION);
+  ipcMain.handle('updater:install', () => {
+    isQuitting = true;
+    autoUpdater.quitAndInstall();
+  });
+  ipcMain.handle('updater:getVersion', () => app.getVersion());
 
-  // Settings
-  ipcMain.handle('settings:get', (_, key) => store.get(key));
-  ipcMain.on('settings:set', (_, key, value) => store.set(key, value));
+  ipcMain.handle('settings:get', (_event, key) => store.get(key));
+  ipcMain.on('settings:set', (_event, key, value) => store.set(key, value));
   ipcMain.handle('settings:getAll', () => store.store);
 
-  // Check for updates on ready
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    void checkGitHubRelease();
-    initDiscordRPC();
-    registerMediaKeys();
-  });
+  ipcMain.handle('app:info', () => ({
+    version: app.getVersion(),
+    platform: process.platform,
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+  }));
+}
 
-  // Notify renderer of maximized state changes
-  mainWindow.on('maximize', () => {
-    store.set('windowMaximized', true);
-    mainWindow.webContents.send('window:maximized', true);
-  });
-
-  mainWindow.on('unmaximize', () => {
-    store.set('windowMaximized', false);
-    mainWindow.webContents.send('window:maximized', false);
-  });
-
-  // Auto-updater events
-  autoUpdater.on('checking-for-update', () => {
-    mainWindow.webContents.send('updater:status', { status: 'checking' });
-  });
-
-  autoUpdater.on('update-available', (info) => {
-    mainWindow.webContents.send('updater:status', { status: 'available', info });
-  });
-
-  autoUpdater.on('update-not-available', () => {
-    mainWindow.webContents.send('updater:status', { status: 'not-available' });
-  });
-
-  autoUpdater.on('error', (err) => {
-    log.error('Auto-updater error:', err);
-    mainWindow.webContents.send('updater:status', { status: 'error', error: err.message });
-  });
-
-  autoUpdater.on('download-progress', (progress) => {
-    mainWindow.webContents.send('updater:progress', progress);
-  });
-
-  autoUpdater.on('update-downloaded', (info) => {
-    mainWindow.webContents.send('updater:status', { status: 'downloaded', info });
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      buttons: ['Restart Now', 'Later'],
-      title: 'Update Ready',
-      message: `Kalamalah v${info.version} has been downloaded.`,
-      detail: 'The application will restart to apply the update.'
-    }).then((result) => {
-      if (result.response === 0) {
-        autoUpdater.quitAndInstall();
-      }
-    });
-  });
+// ---------------------------------------------------------------------------
+// Tray + media keys
+// ---------------------------------------------------------------------------
+function sendMedia(action) {
+  mainWindow?.webContents.send(`media:${action}`);
 }
 
 function createTray() {
+  if (tray) return;
+
   tray = new Tray(ICON_PATH);
   tray.setToolTip('Kalamalah Player');
-  
-  const contextMenu = Menu.buildFromTemplate([
-    { label: 'Show Kalamalah', click: () => mainWindow?.show() },
-    { type: 'separator' },
-    { 
-      label: 'Play/Pause', 
-      click: () => mainWindow?.webContents.send('media:play-pause'),
-      accelerator: 'MediaPlayPause'
-    },
-    { 
-      label: 'Next', 
-      click: () => mainWindow?.webContents.send('media:next'),
-      accelerator: 'MediaNextTrack'
-    },
-    { 
-      label: 'Previous', 
-      click: () => mainWindow?.webContents.send('media:previous'),
-      accelerator: 'MediaPreviousTrack'
-    },
-    { type: 'separator' },
-    { label: 'Check for Updates', click: () => void checkGitHubRelease() },
-    { type: 'separator' },
-    { label: 'Quit', click: () => app.quit() }
-  ]);
-  
-  tray.setContextMenu(contextMenu);
-  tray.on('click', () => mainWindow?.show());
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Show Kalamalah', click: focusMainWindow },
+      { type: 'separator' },
+      { label: 'Play / Pause', click: () => sendMedia('play-pause') },
+      { label: 'Next', click: () => sendMedia('next') },
+      { label: 'Previous', click: () => sendMedia('previous') },
+      { type: 'separator' },
+      { label: 'Check for Updates…', click: () => void checkForUpdates() },
+      { type: 'separator' },
+      {
+        label: 'Quit',
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        },
+      },
+    ]),
+  );
+
+  tray.on('click', focusMainWindow);
+  tray.on('double-click', focusMainWindow);
 }
 
 function registerMediaKeys() {
   if (mediaKeysRegistered) return;
-  
-  const ret = globalShortcut.register('MediaPlayPause', () => {
-    mainWindow?.webContents.send('media:play-pause');
-  });
-  
-  if (ret) {
-    globalShortcut.register('MediaNextTrack', () => {
-      mainWindow?.webContents.send('media:next');
-    });
-    
-    globalShortcut.register('MediaPreviousTrack', () => {
-      mainWindow?.webContents.send('media:previous');
-    });
-    
-    globalShortcut.register('MediaStop', () => {
-      mainWindow?.webContents.send('media:stop');
-    });
-    
-    mediaKeysRegistered = true;
-    log.info('Global media keys registered');
+
+  const bindings = [
+    ['MediaPlayPause', 'play-pause'],
+    ['MediaNextTrack', 'next'],
+    ['MediaPreviousTrack', 'previous'],
+    ['MediaStop', 'stop'],
+  ];
+
+  let any = false;
+  for (const [accelerator, action] of bindings) {
+    try {
+      any = globalShortcut.register(accelerator, () => sendMedia(action)) || any;
+    } catch (err) {
+      log.warn(`Could not register ${accelerator}:`, err?.message || err);
+    }
   }
+  mediaKeysRegistered = any;
 }
 
-function unregisterMediaKeys() {
-  globalShortcut.unregisterAll();
-  mediaKeysRegistered = false;
-}
-
-async function checkGitHubRelease() {
+// ---------------------------------------------------------------------------
+// Updates
+// ---------------------------------------------------------------------------
+async function checkForUpdates() {
   try {
-    const res = await fetch('https://api.github.com/repos/yaseenabouasy/kalamalah/releases/latest', {
-      headers: { 'Accept': 'application/vnd.github.v3+json' }
-    });
-    if (!res.ok) return;
-    
-    const release = await res.json();
-    const latestVersion = release.tag_name.replace('v', '');
-    const currentVersion = CURRENT_VERSION;
-    
-    if (compareVersions(latestVersion, currentVersion) > 0) {
-      const result = await dialog.showMessageBox(mainWindow, {
-        type: 'info',
-        buttons: ['Download Update', 'View Release Notes', 'Later'],
-        title: 'Kalamalah Update Available',
-        message: `Kalamalah v${latestVersion} is available!`,
-        detail: `Current version: v${currentVersion}\n\n${release.body || 'No release notes provided.'}`,
-      });
-      
-      if (result.response === 0 && mainWindow) {
-        shell.openExternal(release.html_url);
-      } else if (result.response === 1) {
-        shell.openExternal(release.html_url);
-      }
-    }
+    return await autoUpdater.checkForUpdates();
   } catch (err) {
-    log.error('Update check failed:', err.message);
+    // Offline / unsigned build / no published release: fail quietly.
+    const message = err?.message || String(err);
+    log.warn('Update check failed:', message);
+    return { error: message };
   }
 }
 
-function compareVersions(a, b) {
-  const aParts = a.split('.').map(Number);
-  const bParts = b.split('.').map(Number);
-  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-    const aVal = aParts[i] || 0;
-    const bVal = bParts[i] || 0;
-    if (aVal > bVal) return 1;
-    if (aVal < bVal) return -1;
-  }
-  return 0;
-}
-
-function createTray() {
-  tray = new Tray(ICON_PATH);
-  tray.setToolTip('Kalamalah Player');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Show Kalamalah', click: () => mainWindow?.show() },
-    { type: 'separator' },
-    { label: 'Play/Pause', click: () => mainWindow?.webContents.send('media:play-pause') },
-    { label: 'Next', click: () => mainWindow?.webContents.send('media:next') },
-    { label: 'Previous', click: () => mainWindow?.webContents.send('media:previous') },
-    { type: 'separator' },
-    { label: 'Check for Updates', click: () => void checkGitHubRelease() },
-    { type: 'separator' },
-    { label: 'Quit', click: () => app.quit() }
-  ]));
-  tray.on('click', () => mainWindow?.show());
-}
-
-app.whenReady().then(() => {
-  createWindow();
-  createTray();
-  initDiscordRPC();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+async function promptForUpdate(info) {
+  const result = await dialog.showMessageBox(mainWindow ?? undefined, {
+    type: 'info',
+    buttons: ['Download Update', 'View Release Notes', 'Later'],
+    defaultId: 0,
+    cancelId: 2,
+    title: 'Kalamalah Update Available',
+    message: `Kalamalah v${info.version} is available.`,
+    detail: `You are on v${app.getVersion()}.`,
   });
-});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('before-quit', () => {
-  stopDiscordRPC();
-  unregisterMediaKeys();
-  disablePowerSaveBlocker();
-});
-
-// Security: Prevent new window creation
-app.on('web-contents-created', (event, contents) => {
-  contents.setWindowOpenHandler(({ url }) => {
-    const urlObj = new URL(url);
-    if (urlObj.hostname === 'kalamalah.com' || urlObj.hostname.endsWith('.kalamalah.com')) {
-      return { action: 'allow' };
+  if (result.response === 0) {
+    try {
+      await autoUpdater.downloadUpdate();
+    } catch (err) {
+      log.warn('Update download failed:', err?.message || err);
     }
-    shell.openExternal(url);
-    return { action: 'deny' };
+  } else if (result.response === 1) {
+    openExternal('https://github.com/yaseenabouasy/kalamalah/releases/latest');
+  }
+}
+
+function registerUpdaterEvents() {
+  autoUpdater.on('checking-for-update', () =>
+    mainWindow?.webContents.send('updater:status', { status: 'checking' }),
+  );
+
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('updater:status', { status: 'available', info });
+    void promptForUpdate(info);
   });
-});
+
+  autoUpdater.on('update-not-available', () =>
+    mainWindow?.webContents.send('updater:status', { status: 'not-available' }),
+  );
+
+  autoUpdater.on('error', (err) =>
+    mainWindow?.webContents.send('updater:status', { status: 'error', error: err?.message }),
+  );
+
+  autoUpdater.on('download-progress', (progress) =>
+    mainWindow?.webContents.send('updater:progress', progress),
+  );
+
+  autoUpdater.on('update-downloaded', async (info) => {
+    mainWindow?.webContents.send('updater:status', { status: 'downloaded', info });
+    const result = await dialog.showMessageBox(mainWindow ?? undefined, {
+      type: 'info',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Update Ready',
+      message: `Kalamalah v${info.version} has been downloaded.`,
+      detail: 'Restart to apply the update.',
+    });
+    if (result.response === 0) {
+      isQuitting = true;
+      autoUpdater.quitAndInstall();
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// App lifecycle
+// ---------------------------------------------------------------------------
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  pendingDeepLink = extractDeepLink(process.argv);
+
+  app.on('second-instance', (_event, commandLine) => {
+    focusMainWindow();
+    const deepLink = extractDeepLink(commandLine);
+    if (deepLink) sendDeepLink(deepLink);
+  });
+
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    sendDeepLink(url);
+  });
+
+  registerIpc();
+  registerUpdaterEvents();
+
+  app.whenReady().then(() => {
+    createWindow();
+    createTray();
+    registerMediaKeys();
+    initDiscordRPC();
+
+    // Delay the update probe so startup stays fast.
+    setTimeout(() => void checkForUpdates(), 8000);
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      else focusMainWindow();
+    });
+  });
+
+  app.on('window-all-closed', () => {
+    if (!IS_MAC) app.quit();
+  });
+
+  app.on('before-quit', () => {
+    isQuitting = true;
+    stopDiscordRPC();
+    globalShortcut.unregisterAll();
+    mediaKeysRegistered = false;
+    disablePowerSaveBlocker();
+  });
+}
+
+// Register protocol handler (packaged builds register this at install time,
+// this covers dev runs and Linux desktops).
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('kalamalah', process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient('kalamalah');
+}
