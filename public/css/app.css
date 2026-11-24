@@ -108,6 +108,33 @@
 }
 
 @font-face {
+  font-family: 'Kitab';
+  src: url('/fonts/Kitab-Regular.woff2') format('woff2'),
+       url('/fonts/Kitab-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Kitab';
+  src: url('/fonts/Kitab-Bold.woff2') format('woff2'),
+       url('/fonts/Kitab-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Amiri';
+  src: url('/fonts/Amiri-Regular.woff2') format('woff2'),
+       url('/fonts/Amiri-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'SF Pro Rounded';
   src: url('/fonts/sfpro-rounded-Semibold.woff2') format('woff2'),
        url('/fonts/sfpro-rounded-Semibold.otf') format('opentype'),
