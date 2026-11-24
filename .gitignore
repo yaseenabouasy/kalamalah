@@ -8,7 +8,7 @@ dist/
 /kalamalah-logo-nobg.png
 /round-logo.png
 /non-round-logo.png
-pnpm-lock.yaml
+
 /scripts/translate-ui.js
 
 # Build artifacts & local files
