@@ -345,30 +345,8 @@ export async function fetchTimingsApi(
       // Fall through to manifest-based fallback
     }
 
-    // THIRD: Fallback - check manifest for other reciters with this surah
-    // Only as LAST RESORT, try other reciters in the manifest
-    // This maintains backward compatibility but should rarely be needed
-    for (const provider of providerPriority) {
-      if (!manifest?.[provider]) continue;
-
-      for (const [providerReciterSlug, info] of Object.entries(manifest[provider])) {
-        if (providerReciterSlug === reciterSlug) continue; // Already tried above
-        if (info.surahs.includes(surahNumber)) {
-          try {
-            const res = await fetch(`/vendor/timing/${provider}/${providerReciterSlug}-${surahNumber}.json`, { signal, cache: 'force-cache' });
-            if (res.ok) {
-              const timings = (await res.json()) as NormalizedSurahTimings;
-              if (timings && timings.mode === 'word' && timings.ayahs.length > 0) {
-                console.warn(`[fetchTimingsApi] Using fallback timings from ${providerReciterSlug} for requested ${reciterSlug}`);
-                return { ...timings, reciterSlug };
-              }
-            }
-          } catch {
-            // Try next reciter/provider
-          }
-        }
-      }
-    }
+    // No fallback to other reciters - wrong timings cause incorrect word-by-word sync
+    // If the specific reciter's timings aren't available, return null and let the player handle it
   }
 
   const reciter =
