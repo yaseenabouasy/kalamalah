@@ -1,6 +1,8 @@
 import { SURAHS_META, TRANSLATION_EDITIONS, TAFSEER_BOOKS } from '../kalamalah-api';
 import { getReciterPhotoUrl, RECITERS_CATALOG } from '../reciters-catalog';
 import { renderZarazHeadHtml } from '../zaraz';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 export interface LayoutProps {
   title: string;
@@ -325,6 +327,20 @@ export function renderLayout(props: LayoutProps): string {
     translations: TRANSLATION_EDITIONS,
     pageData: props.pageBootstrapData ?? {},
   };
+
+  // Read content-hashed manifest for code-split assets
+  let appJs = '/js/app.js';
+  let modulePreloads = '';
+  try {
+    const manifestPath = join(process.cwd(), 'public/js/manifest.json');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf-8'));
+    appJs = manifest.app || '/js/app.js';
+    if (manifest.chunks?.length) {
+      modulePreloads = manifest.chunks.map((chunk: string) =>
+        `<link rel="modulepreload" href="/${chunk}" />`
+      ).join('\n');
+    }
+  } catch {}
 
   return `<!DOCTYPE html>
 <html lang="en" dir="ltr" data-reading-font="uthmani">
@@ -1194,10 +1210,10 @@ export function renderLayout(props: LayoutProps): string {
   <script id="kalamalah-bootstrap" type="application/json">${safeJsonForScript(clientCatalogBootstrap)}</script>
 
   <!-- Module Preload for Critical Chunks (if code-split) -->
-  <link rel="modulepreload" href="/js/app.js" />
+  ${modulePreloads}
 
   <!-- Main App (deferred module) -->
-  <script type="module" src="/js/app.js"></script>
+  <script type="module" src="${appJs}"></script>
 
   <!-- Service Worker Registration (offline support) -->
   <script>
