@@ -222,41 +222,46 @@ export function buildSitemapXml(baseUrl = 'https://kalamalah.com'): string {
 }
 
 // Critical CSS (Above-the-Fold Only) - Inlined for instant render
+// Uses SAME variable names as public/css/app.css for consistency
 const criticalCSS = `
 /* === CRITICAL VARIABLES & RESET === */
-:root{
-  --color-bg:#12151a;--color-bg-elevated:#1a1f26;--color-bg-hover:#232933;
-  --color-fg:#e8e8e8;--color-fg-muted:#9a9a9a;--color-border:#2d333d;
-  --color-primary:#d4a843;--color-primary-hover:#e8c56d;--color-primary-soft:#2d2618;
-  --color-danger:#e85d5d;--color-success:#4ade80;--color-focus:#d4a843;
-  --radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-full:9999px;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.3);--shadow-md:0 4px 12px rgba(0,0,0,.4);
-  --shadow-lg:0 8px 24px rgba(0,0,0,.5);
-  --transition-fast:120ms ease;--transition-base:200ms ease;--transition-slow:350ms ease;
-  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;
-  --container-max:1280px;--header-h:56px;--player-h:72px;
-  --font-ui:"Inter","Cairo",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-  --font-arabic-ui:"Cairo","Tajawal","IBM Plex Sans Arabic","Noto Sans Arabic",sans-serif;
-  --font-quran:"UthmanicHafs","Kitab","Amiri","Noto Nastaliq Urdu",sans-serif;
-  --font-quran-reading:"Kitab","UthmanicHafs","Amiri","Noto Nastaliq Urdu",sans-serif;
+:root,
+html:not([data-theme]),
+html[data-theme="dark"] {
+  --bg-primary:#12151a;--bg-elevated:#1a1f27;--bg-surface:#22272f;--bg-surface-hover:#2b323c;--bg-subtle:rgba(255,255,255,.05);
+  --border:rgba(214,187,138,.14);--border-strong:rgba(214,187,138,.32);
+  --text-primary:#f4efe4;--text-secondary:#aab4ac;--text-muted:#7f8a85;
+  --gold:#d6bb8a;--gold-bright:#ecd6a8;--gold-soft:rgba(214,187,138,.14);
+  --btn-gold-bg:#d6bb8a;--btn-gold-bg-hover:#ecd6a8;--btn-gold-fg:#090d16;
+  --emerald:#93b3a0;--emerald-soft:rgba(147,179,160,.16);--cyan:#93b3a0;--cyan-soft:rgba(147,179,160,.16);
+  --danger:#e0857a;
+  --mushaf-paper:#171b21;--mushaf-frame:rgba(214,187,138,.24);
+  --overlay-shadow:0 22px 54px rgba(0,0,0,.55);--shadow-lg:0 18px 42px rgba(0,0,0,.5);
+  --player-bar-height:74px;--quran-font-scale:1;color-scheme:dark;
 }
-html[data-theme="light"]{
-  --color-bg:#fbf9f3;--color-bg-elevated:#fff;--color-bg-hover:#f0ebe3;
-  --color-fg:#1a1d1f;--color-fg-muted:#566059;--color-border:#e8e0d4;
-  --color-primary:#7a5614;--color-primary-hover:#5d4010;--color-primary-soft:#fbf3e0;
-  --color-danger:#c0392b;--color-success:#16a34a;--color-focus:#7a5614;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.08);--shadow-md:0 4px 12px rgba(0,0,0,.1);
-  --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+html[data-theme="light"] {
+  --bg-primary:#fbf9f3;--bg-elevated:#f3efe4;--bg-surface:#fff;--bg-surface-hover:#f4f0e5;--bg-subtle:rgba(28,32,38,.05);
+  --border:rgba(28,32,38,.12);--border-strong:rgba(154,118,56,.34);
+  --text-primary:#171a1f;--text-secondary:#474f4b;--text-muted:#566059;
+  --gold:#7a5614;--gold-bright:#5d4010;--gold-soft:rgba(154,118,56,.18);
+  --btn-gold-bg:#7a5614;--btn-gold-bg-hover:#5d4010;--btn-gold-fg:#fff;
+  --emerald:#2d5038;--emerald-soft:rgba(63,99,80,.18);--cyan:#2d5038;--cyan-soft:rgba(63,99,80,.18);
+  --danger:#a03022;
+  --mushaf-paper:#fff;--mushaf-frame:rgba(154,118,56,.32);
+  --overlay-shadow:0 18px 44px rgba(28,32,38,.16);--shadow-lg:0 16px 38px rgba(28,32,38,.14);
+  color-scheme:light;
+  /* AeroUI Light Mode */
+  --aero-primary:#171a1f;--aero-bg:#fff;--aero-fg:#171a1f;--aero-focus-ring:#7a5614;--aero-disabled:rgba(28,32,38,.3);
 }
 *,*:before,*:after{box-sizing:border-box}
 html{font-size:16px;-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-body{margin:0;font-family:var(--font-ui);font-size:1rem;line-height:1.6;color:var(--color-fg);background:var(--color-bg);min-height:100vh;display:flex;flex-direction:column}
+body{margin:0;font-family:var(--font-ui);font-size:1rem;line-height:1.6;color:var(--text-primary);background:var(--bg-primary);min-height:100vh;display:flex;flex-direction:column}
 img,video,svg{display:block;max-width:100%;height:auto}
 a{color:inherit;text-decoration:none}
 button,input,select,textarea{font:inherit;color:inherit;background:none;border:none;outline:none}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .hidden{display:none!important}
-.container{width:100%;max-width:var(--container-max);margin:0 auto;padding:0 var(--space-4)}
+.container{width:100%;max-width:1280px;margin:0 auto;padding:0 16px}
 .header-actions,.header-lang-menu,.primary-nav,.browse-tabs,.surah-hero,.reading-toolbar{visibility:hidden}
 html[data-loaded] .header-actions,html[data-loaded] .header-lang-menu,html[data-loaded] .primary-nav,html[data-loaded] .browse-tabs,html[data-loaded] .surah-hero,html[data-loaded] .reading-toolbar{visibility:visible}
 
@@ -273,6 +278,9 @@ html[data-loaded] .header-actions,html[data-loaded] .header-lang-menu,html[data-
 @font-face{font-family:"Cairo Fallback";src:local("Arial");size-adjust:115%;ascent-override:95%;descent-override:25%;line-gap-override:0%}
 html{font-family:"Inter","Inter Fallback",var(--font-ui)}
 .quran-text,.quran-reading-text,.arabic-text{font-family:var(--font-quran-reading)}
+
+/* Surah badge contrast fix for light mode */
+html[data-theme="light"] .surah-num-badge{color:#5d4010}
 `;
 
 export function renderLayout(props: LayoutProps): string {

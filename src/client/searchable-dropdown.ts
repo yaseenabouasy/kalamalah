@@ -608,19 +608,23 @@ export class SearchableDropdown {
     this.root.classList.add('is-open');
     this.triggerEl.setAttribute('aria-expanded', 'true');
     this.panelEl.setAttribute('aria-hidden', 'false');
+    this.panelEl.style.display = 'block';
 
     this.searchInputEl.value = '';
     this.renderOptionsList('');
 
-    // Auto-flip: open upward only when there isn't enough room below (no fixed position override)
-    this.root.classList.remove('dropup');
-    const triggerRect = this.triggerEl.getBoundingClientRect();
-    const panelHeight = this.panelEl.offsetHeight;
-    const spaceBelow = window.innerHeight - triggerRect.bottom;
-    const spaceAbove = triggerRect.top;
-    if (panelHeight + 12 > spaceBelow && spaceAbove > spaceBelow) {
-      this.root.classList.add('dropup');
-    }
+    // Auto-flip: open upward only when there isn't enough room below
+    // Use requestAnimationFrame to batch DOM reads and avoid forced reflow
+    requestAnimationFrame(() => {
+      this.root.classList.remove('dropup');
+      const triggerRect = this.triggerEl.getBoundingClientRect();
+      const panelHeight = this.panelEl.offsetHeight;
+      const spaceBelow = window.innerHeight - triggerRect.bottom;
+      const spaceAbove = triggerRect.top;
+      if (panelHeight + 12 > spaceBelow && spaceAbove > spaceBelow) {
+        this.root.classList.add('dropup');
+      }
+    });
 
     const count = this.filteredIndices.length;
     if (count > 0) {
@@ -647,6 +651,13 @@ export class SearchableDropdown {
     this.searchInputEl.value = '';
     this.renderOptionsList('');
     this.setActivePos(-1, false);
+
+    // Ensure panel is removed from accessibility tree after animation
+    setTimeout(() => {
+      if (!this.isOpen) {
+        this.panelEl.style.display = 'none';
+      }
+    }, 300);
   }
 
   public refresh(newOptions: DropdownOption[]): void {

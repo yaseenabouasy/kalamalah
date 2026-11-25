@@ -1392,6 +1392,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   initDebugOverlay();
   void checkForUpdates();
 
+  // Hijri calendar banner (lightweight, needed early)
+  import('./hijri-calendar.js').then(m => m.initHijriCalendarBanner()).catch(() => {});
+
   // Mark page as loaded (unhides critical elements for CLS prevention)
   document.documentElement.dataset.loaded = 'true';
 });

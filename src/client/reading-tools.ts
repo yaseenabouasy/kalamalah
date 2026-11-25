@@ -582,26 +582,27 @@ function initBookmarksAndTracker(): void {
   // Save current reading position when scrolling through a Surah
   if (surahNum > 0 && surahNameAr) {
     let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-    window.addEventListener(
-      'scroll',
-      () => {
-        if (scrollTimer) clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(() => {
-          const blocks = document.querySelectorAll<HTMLElement>('.ayah-block');
-          for (const b of Array.from(blocks)) {
-            const rect = b.getBoundingClientRect();
-            if (rect.top >= 60 && rect.top <= window.innerHeight * 0.6) {
-              const aNum = Number(b.getAttribute('data-ayah') || 1);
-              localStorage.setItem(
-                LAST_READ_KEY,
-                JSON.stringify({ surahNumber: surahNum, surahNameAr, surahNameEn, ayahNumber: aNum })
-              );
-              break;
-            }
-          }
-        }, 500);
-      },
-      { passive: true }
-    );
+    // Use IntersectionObserver instead of scroll + getBoundingClientRect to avoid forced reflows
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          const b = entry.target as HTMLElement;
+          const aNum = Number(b.getAttribute('data-ayah') || 1);
+          localStorage.setItem(
+            LAST_READ_KEY,
+            JSON.stringify({ surahNumber: surahNum, surahNameAr, surahNameEn, ayahNumber: aNum })
+          );
+          break;
+        }
+      }
+    }, {
+      rootMargin: '-60px 0px -40% 0px',
+      threshold: 0
+    });
+
+    const blocks = document.querySelectorAll<HTMLElement>('.ayah-block');
+    for (const b of Array.from(blocks)) {
+      observer.observe(b);
+    }
   }
 }

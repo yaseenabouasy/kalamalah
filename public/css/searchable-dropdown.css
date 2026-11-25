@@ -230,6 +230,12 @@ html[data-theme="light"] .sd-panel {
   visibility: visible;
   pointer-events: auto;
   transform: scale(1) translateY(0);
+  display: block;
+}
+
+/* When closed, use display: none to remove from accessibility tree and prevent focusable descendants */
+.sd-panel {
+  display: none;
 }
 
 /* Auto-flip: open upward when there is not enough space below the trigger */
