@@ -13,7 +13,5 @@ declare global {
     };
     __KALAMALAH_SHOW_CHANGELOG__: () => void;
     __KALAMALAH_SET_GPU_ONLY__: (enabled: boolean) => void;
-    __kalamalahZarazConsent?: Record<string, boolean>;
-    __kalamalahZarazRetries?: number;
   }
 }

@@ -1,6 +1,5 @@
 import { SURAHS_META, TRANSLATION_EDITIONS, TAFSEER_BOOKS } from '../kalamalah-api';
 import { getReciterPhotoUrl, RECITERS_CATALOG } from '../reciters-catalog';
-import { renderZarazHeadHtml } from '../zaraz';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -294,7 +293,6 @@ export function renderLayout(props: LayoutProps): string {
     markdownPath === '/' || markdownPath === ''
       ? 'https://kalamalah.com/index.md'
       : `https://kalamalah.com${markdownPath.replace(/\/+$/, '')}.md`;
-  const zarazHeadHtml = renderZarazHeadHtml();
   const discordEmbedJson = buildDiscordComponentEmbedJson(props.title, description, canonicalUrl);
   const structuredDataJson = buildStructuredDataJson(props.title, description, canonicalUrl);
 
@@ -357,7 +355,6 @@ export function renderLayout(props: LayoutProps): string {
   <link rel="alternate" hreflang="x-default" href="${escapeHtml(canonicalUrl)}" />
   <link rel="alternate" type="text/markdown" href="${escapeHtml(markdownUrl)}" title="Markdown version" />
   <link rel="llms-txt" href="/llms.txt" />
-  ${zarazHeadHtml}
   <meta name="theme-color" content="#c8a45d" />
   <meta name="darkreader-lock" />
   <meta name="mobile-web-app-capable" content="yes" />

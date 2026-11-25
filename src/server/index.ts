@@ -4,7 +4,6 @@ import { secureHeaders } from 'hono/secure-headers';
 import { join, resolve, sep } from 'node:path';
 import { safeAudioUrl } from './audio-hosts';
 import { buildLlmsTxt, renderMarkdownForPath } from './markdown';
-import { zarazCspOrigins } from './zaraz';
 import {
   fetchJuzDetail,
   fetchMushafPage,
@@ -38,9 +37,6 @@ const app = new Hono();
 // Brotli/gzip for text responses (audio and images are skipped by content type).
 app.use('*', compress());
 
-// Zaraz (if loaded from an external origin) needs its origin in the CSP.
-const zarazOrigins = zarazCspOrigins();
-
 // Baseline security headers. COEP is disabled deliberately: this app loads
 // cross-origin audio and images that do not send CORP/CORS headers.
 // NOTE: script-src still allows 'unsafe-inline' for the early theme script in
@@ -50,13 +46,13 @@ app.use(
   secureHeaders({
     contentSecurityPolicy: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", ...zarazOrigins],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
       imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
       fontSrc: ["'self'", 'data:', 'https:'],
       mediaSrc: ["'self'", 'blob:', 'https:'],
       connectSrc: ["'self'", 'https:'],
-      frameSrc: ["'self'", ...zarazOrigins],
+      frameSrc: ["'self'"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       frameAncestors: ["'none'"],

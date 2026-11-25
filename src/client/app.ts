@@ -18,7 +18,6 @@ import { initElasticSliders } from './aeroui/components/elastic-slider/elastic-s
 import { initSkipLabels, playSkip } from './aeroui/components/skip-label/skip-label.js';
 // @ts-ignore
 import { initSkipButtons, setSkipIcon } from './aeroui/components/skip-button/skip-button.js';
-import { initZarazConsent, setZarazConsent, trackPageView } from './zaraz.js';
 
 // Hijri calendar banner (lightweight, needed early)
 import { initHijriCalendarBanner } from './hijri-calendar';
@@ -991,8 +990,6 @@ function initCookieConsentBanner(): void {
     try {
       localStorage.setItem(KEY, choice);
     } catch {}
-    // Tell Zaraz right away; purposes stay denied until it is loaded.
-    setZarazConsent(choice);
     banner.classList.remove('is-visible');
     setTimeout(() => banner.classList.add('hidden'), 240);
   };
@@ -1300,7 +1297,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   initThemeController();
   initMobileDrawerNavigation();
   initCookieConsentBanner();
-  initZarazConsent();
 
   await resolveStaticRouteIfNeeded(catalog);
   rewriteStaticDownloadLinks(catalog);
