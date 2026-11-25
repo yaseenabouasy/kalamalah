@@ -268,15 +268,14 @@ html[data-loaded] .header-actions,html[data-loaded] .header-lang-menu,html[data-
 /* === CRITICAL FONT FACES === */
 @font-face{font-family:"UthmanicHafs";src:url(/fonts/UthmanicHafs-subset.woff2) format("woff2");font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
 @font-face{font-family:"Kitab";src:url(/fonts/Kitab-subset.woff2) format("woff2");font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
-@font-face{font-family:"Inter";src:url(/fonts/Inter-var-latin.woff2) format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122}
-@font-face{font-family:"Cairo";src:url(/fonts/Cairo-subset.woff2) format("woff2");font-weight:200 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+2000-206F,U+20AC,U+2122}
 @font-face{font-family:"Tajawal";src:url(/fonts/Tajawal-subset.woff2) format("woff2");font-weight:400;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
 @font-face{font-family:"Tajawal";src:url(/fonts/Tajawal-Bold-subset.woff2) format("woff2");font-weight:700;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
 
+/* Inter & Cairo: using system font fallback (metric-matched) until local WOFF2 available */
 /* Metric-matched fallbacks = zero layout shift on font swap */
 @font-face{font-family:"Inter Fallback";src:local("Arial");size-adjust:107%;ascent-override:90%;descent-override:22%;line-gap-override:0%}
 @font-face{font-family:"Cairo Fallback";src:local("Arial");size-adjust:115%;ascent-override:95%;descent-override:25%;line-gap-override:0%}
-html{font-family:"Inter","Inter Fallback",var(--font-ui)}
+html{font-family:"Inter Fallback",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif}
 .quran-text,.quran-reading-text,.arabic-text{font-family:var(--font-quran-reading)}
 
 /* Surah badge contrast fix for light mode */
@@ -402,8 +401,7 @@ export function renderLayout(props: LayoutProps): string {
 
   <!-- Critical Font Preloads (Only Above-the-Fold Fonts) -->
   <link rel="preload" href="/fonts/UthmanicHafs-subset.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high" />
-  <link rel="preload" href="/fonts/Inter-var-latin.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low" />
-  <link rel="preload" href="/fonts/Cairo-subset.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low" />
+  <!-- Inter & Cairo: using system font fallback until local WOFF2 available -->
 
   <!-- Critical CSS Inlined (Above-the-Fold Only) -->
   <style>${criticalCSS}</style>
