@@ -20,6 +20,9 @@ import { initSkipLabels, playSkip } from './aeroui/components/skip-label/skip-la
 import { initSkipButtons, setSkipIcon } from './aeroui/components/skip-button/skip-button.js';
 import { initZarazConsent, setZarazConsent, trackPageView } from './zaraz.js';
 
+// Hijri calendar banner (lightweight, needed early)
+import { initHijriCalendarBanner } from './hijri-calendar';
+
 // Lazy imports for heavy features (code splitting)
 import { preloadCriticalFeatures, initOnInteraction, LazyFeatures } from './lazy-imports.js';
 
@@ -1391,9 +1394,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyDeepLinkParams(player);
   initDebugOverlay();
   void checkForUpdates();
-
-  // Hijri calendar banner (lightweight, needed early)
-  import('./hijri-calendar.js').then(m => m.initHijriCalendarBanner()).catch(() => {});
 
   // Mark page as loaded (unhides critical elements for CLS prevention)
   document.documentElement.dataset.loaded = 'true';
