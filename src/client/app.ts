@@ -1370,9 +1370,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   initPlayerButtons();
   initElasticSliders();
   initSkipLabels();
+  initSkipButtons(); // NEW: initialize skip buttons
   // Expose AeroUI helpers globally for quran-player.ts
   (window as any).setPlayerIcon = setPlayerIcon;
   (window as any).playSkip = playSkip;
+  (window as any).setSkipIcon = setSkipIcon; // NEW
 
   // Initialize features needed for initial render
   initSettingsSheet(); // Needed for initial UI state
@@ -1389,4 +1391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyDeepLinkParams(player);
   initDebugOverlay();
   void checkForUpdates();
+
+  // Mark page as loaded (unhides critical elements for CLS prevention)
+  document.documentElement.dataset.loaded = 'true';
 });
