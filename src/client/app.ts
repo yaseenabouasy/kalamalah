@@ -22,6 +22,7 @@ import { initZarazConsent, setZarazConsent, trackPageView } from './zaraz.js';
 
 // Hijri calendar banner (lightweight, needed early)
 import { initHijriCalendarBanner } from './hijri-calendar';
+import { initSleepTimer } from './sleep-timer';
 
 // Lazy imports for heavy features (code splitting)
 import { preloadCriticalFeatures, initOnInteraction, LazyFeatures } from './lazy-imports.js';

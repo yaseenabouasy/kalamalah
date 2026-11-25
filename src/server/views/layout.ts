@@ -1,7 +1,7 @@
 import { SURAHS_META, TRANSLATION_EDITIONS, TAFSEER_BOOKS } from '../kalamalah-api';
 import { getReciterPhotoUrl, RECITERS_CATALOG } from '../reciters-catalog';
 import { renderZarazHeadHtml } from '../zaraz';
-import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export interface LayoutProps {
@@ -333,7 +333,7 @@ export function renderLayout(props: LayoutProps): string {
   let modulePreloads = '';
   try {
     const manifestPath = join(process.cwd(), 'public/js/manifest.json');
-    const manifest = JSON.parse(await readFile(manifestPath, 'utf-8'));
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
     appJs = manifest.app || '/js/app.js';
     if (manifest.chunks?.length) {
       modulePreloads = manifest.chunks.map((chunk: string) =>
