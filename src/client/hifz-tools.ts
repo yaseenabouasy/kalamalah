@@ -89,20 +89,42 @@ export function startTestMeMode(ayahs: { n: number; text: string }[]): void {
   overlay.style.cssText =
     'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);padding:16px;';
 
-  overlay.innerHTML = `
-    <div style="max-width:560px;width:100%;background:var(--bg-card,#18181b);color:var(--text-primary,#f4f4f5);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:24px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h3 style="margin:0;">Hifz Test Me (Ayah ${promptAyah.n})</h3>
-        <button id="testme-close" style="background:none;border:none;color:inherit;font-size:1.2rem;cursor:pointer;">✕</button>
-      </div>
-      <p dir="rtl" style="font-size:1.4rem;line-height:2;padding:12px;background:rgba(255,255,255,0.05);border-radius:10px;margin:0 0 16px;">${promptAyah.text}</p>
-      <div id="testme-revealed" dir="rtl" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;font-size:1.25rem;line-height:1.9;"></div>
-      <button id="testme-reveal-btn" style="width:100%;padding:10px;border-radius:10px;border:none;background:var(--accent,#10b981);color:#fff;font-weight:600;cursor:pointer;">Reveal Next Ayah (1/3)</button>
-    </div>
-  `;
+  const card = document.createElement('div');
+  card.style.cssText = 'max-width:560px;width:100%;background:var(--bg-card,#18181b);color:var(--text-primary,#f4f4f5);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:24px;';
 
-  const revealedEl = overlay.querySelector('#testme-revealed')!;
-  const revealBtn = overlay.querySelector<HTMLButtonElement>('#testme-reveal-btn')!;
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;';
+  const title = document.createElement('h3');
+  title.style.cssText = 'margin:0;';
+  title.textContent = `Hifz Test Me (Ayah ${promptAyah.n})`;
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'testme-close';
+  closeBtn.style.cssText = 'background:none;border:none;color:inherit;font-size:1.2rem;cursor:pointer;';
+  closeBtn.textContent = '✕';
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+
+  const ayahP = document.createElement('p');
+  ayahP.dir = 'rtl';
+  ayahP.style.cssText = 'font-size:1.4rem;line-height:2;padding:12px;background:rgba(255,255,255,0.05);border-radius:10px;margin:0 0 16px;';
+  ayahP.textContent = promptAyah.text;
+
+  const revealedEl = document.createElement('div');
+  revealedEl.id = 'testme-revealed';
+  revealedEl.dir = 'rtl';
+  revealedEl.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:16px;font-size:1.25rem;line-height:1.9;';
+
+  const revealBtn = document.createElement('button');
+  revealBtn.id = 'testme-reveal-btn';
+  revealBtn.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:none;background:var(--accent,#10b981);color:#fff;font-weight:600;cursor:pointer;';
+  revealBtn.textContent = 'Reveal Next Ayah (1/3)';
+
+  card.appendChild(header);
+  card.appendChild(ayahP);
+  card.appendChild(revealedEl);
+  card.appendChild(revealBtn);
+  overlay.appendChild(card);
+
   revealBtn.addEventListener('click', () => {
     if (revealedCount < nextThree.length) {
       const a = nextThree[revealedCount]!;

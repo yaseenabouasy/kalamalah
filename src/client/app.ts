@@ -26,6 +26,18 @@ import { initChangelogModal } from './changelog-modal';
 
 // Lazy imports for heavy features (code splitting)
 import { preloadCriticalFeatures, initOnInteraction, LazyFeatures } from './lazy-imports.js';
+import { initSettingsSheet } from './settings-sheet';
+import { initAmbientMixer } from './ambient-mixer';
+import { initHifzTools } from './hifz-tools';
+import { initDualScreenMode } from './tv-display';
+import { initIosFullscreen } from './ios-fullscreen';
+import { initMediaSession } from './media-session';
+import { initCastController } from './cast-controller';
+import { initAyahCardGenerator } from './ayah-card';
+import { initAyahEmbedWidget } from './ayah-embed';
+import { initWindowControls } from './window-controls';
+import { initDebugOverlay } from './debug-overlay';
+import { checkForUpdates } from './version-check';
 
 function parseBootstrapCatalog(): BootstrapCatalog {
   try {

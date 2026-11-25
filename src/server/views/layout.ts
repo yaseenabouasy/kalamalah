@@ -263,8 +263,6 @@ button,input,select,textarea{font:inherit;color:inherit;background:none;border:n
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .hidden{display:none!important}
 .container{width:100%;max-width:1280px;margin:0 auto;padding:0 16px}
-.header-actions,.header-lang-menu,.primary-nav,.browse-tabs,.surah-hero,.reading-toolbar{visibility:hidden}
-html[data-loaded] .header-actions,html[data-loaded] .header-lang-menu,html[data-loaded] .primary-nav,html[data-loaded] .browse-tabs,html[data-loaded] .surah-hero,html[data-loaded] .reading-toolbar{visibility:visible}
 
 /* === CRITICAL FONT FACES === */
 @font-face{font-family:"UthmanicHafs";src:url(/fonts/UthmanicHafs-subset.woff2) format("woff2");font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
@@ -869,7 +867,7 @@ export function renderLayout(props: LayoutProps): string {
       </div>
     </div>
 
-    <audio id="kalamalah-audio-el" preload="none" crossorigin="anonymous"></audio>
+    <audio id="kalamalah-audio-el" preload="none"></audio>
   </aside>
 
   <!-- Fullscreen Synced Quran View (1:1 Port of LyricsFlow main/player.html + dybg + AeroUI + AML Physics) -->
