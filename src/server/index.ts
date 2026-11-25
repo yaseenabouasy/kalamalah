@@ -273,7 +273,6 @@ app.get('/css/*', async (c) => {
       headers: {
         'Content-Type': 'text/css; charset=utf-8',
         'Cache-Control': 'public, max-age=31536000, immutable',
-        'Content-Encoding': 'br', // Bun auto-compresses with compress() middleware
       },
     });
   }
