@@ -1075,7 +1075,6 @@ function initSoftSpaNavigation(
           onPageSwapped();
           player.rebindAnimator();
           window.scrollTo({ top: 0, behavior: 'auto' });
-          trackPageView(targetUrl.pathname, document.title);
           return;
         }
         window.location.href = targetUrl.href;
@@ -1096,7 +1095,6 @@ function initSoftSpaNavigation(
 
       document.title = doc.title || document.title;
       mainEl.innerHTML = nextMain.innerHTML;
-      trackPageView(targetUrl.pathname, document.title);
 
       try {
         const bootEl = doc.getElementById('kalamalah-bootstrap');

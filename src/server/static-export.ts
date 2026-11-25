@@ -233,8 +233,9 @@ async function runStaticExport(): Promise<void> {
     // Build per-reciter timing caches
     const reciterTimingCaches = new Map<string, Map<number, NormalizedSurahTimings>>();
     for (const [key, entry] of bestTimings.entries()) {
-      const [reciterSlug, surahNumStr] = key.split(':');
-      const surahNum = parseInt(surahNumStr, 10);
+      const parts = key.split(':');
+      const reciterSlug = parts[0]!;
+      const surahNum = parseInt(parts[1]!, 10);
       const reciterCache = reciterTimingCaches.get(reciterSlug) ?? new Map<number, NormalizedSurahTimings>();
       reciterCache.set(surahNum, entry.timings);
       reciterTimingCaches.set(reciterSlug, reciterCache);
