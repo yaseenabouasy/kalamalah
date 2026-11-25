@@ -8,6 +8,12 @@
  */
 
 import { escapeHtml, getActiveLocale, isRtlLocale, t, formatLocaleDigits } from './i18n';
+import {
+  fetchTajweedAnnotations,
+  applyTajweedToWord,
+  clearTajweedCache,
+  type TajweedAyahAnnotation,
+} from './tajweed-data';
 
 export type ReadingFont = 'uthmani' | 'nastaleeq' | 'kitab' | 'amiri';
 export type TajweedSchema = 'printed' | 'alquran';
@@ -26,6 +32,47 @@ const LAST_READ_KEY = 'kalamalah_last_read_v1';
 
 // AbortController for cleaning up listeners on re-init (soft nav)
 let readingToolsController: AbortController | null = null;
+
+// Reference to refreshAllWordsRender, set during initReadingTools so
+// setTajweedContext can trigger re-render when tajweed data loads.
+let refreshAllWordsRenderFn: (() => void) | null = null;
+
+// Tajweed data from quran.islamonline.net (scholar-reviewed)
+let currentSurahNumber: number | null = null;
+let currentReciterSlug: string | null = null;
+let currentAyahTajweed: Map<number, TajweedAyahAnnotation> = new Map();
+let tajweedDataLoaded = false;
+
+/**
+ * Set the current surah and reciter, and preload tajweed data.
+ * Call this from quran-player.ts when the surah or reciter changes.
+ */
+export function setTajweedContext(surahNumber: number, reciterSlug: string): void {
+  if (currentSurahNumber === surahNumber && currentReciterSlug === reciterSlug) return;
+  currentSurahNumber = surahNumber;
+  currentReciterSlug = reciterSlug;
+  tajweedDataLoaded = false;
+  currentAyahTajweed = new Map();
+
+  // Preload tajweed data (non-blocking)
+  void fetchTajweedAnnotations(reciterSlug, surahNumber).then((annotation) => {
+    if (annotation) {
+      for (const ayah of annotation.ayahs) {
+        currentAyahTajweed.set(ayah.ayah, ayah);
+      }
+      tajweedDataLoaded = true;
+      // Re-render with new tajweed data
+      refreshAllWordsRenderFn?.();
+    }
+  });
+}
+
+/**
+ * Get tajweed annotation for a specific ayah (null if not loaded yet).
+ */
+export function getTajweedForAyah(ayahNumber: number): TajweedAyahAnnotation | null {
+  return currentAyahTajweed.get(ayahNumber) ?? null;
+}
 
 /**
  * Applies Tajweed color markup to an Arabic word without breaking ligatures.
@@ -181,7 +228,20 @@ export function initReadingTools(): void {
       const filtered = filterWordDiacritics(fontNormalized, currentTashkeelPreset);
 
       if (tajweedEnabled) {
-        let html = colorizeArabicWordTajweed(filtered, currentTajweedSchema);
+        let html: string;
+        // Try server tajweed data first (quran.islamonline.net), fall back to heuristic
+        const ayahNum = Number(el.getAttribute('data-ayah') || 0);
+        const ayahTajweed = ayahNum > 0 ? getTajweedForAyah(ayahNum) : null;
+        if (ayahTajweed && tajweedDataLoaded) {
+          const result = applyTajweedToWord(filtered, idx, ayahTajweed, escapeHtml);
+          html = result.html;
+          // If no tajweed annotations for this word, fall back to heuristic
+          if (!result.hasTajweed) {
+            html = colorizeArabicWordTajweed(filtered, currentTajweedSchema);
+          }
+        } else {
+          html = colorizeArabicWordTajweed(filtered, currentTajweedSchema);
+        }
         // Fix sukoon rendering for Uthmani/Nastaleeq by wrapping in Kitab font
         if (currentReadingFont !== 'kitab' && currentReadingFont !== 'amiri') {
           html = wrapSukoonInKitab(html);
@@ -207,6 +267,8 @@ export function initReadingTools(): void {
       }
     });
   }
+
+  refreshAllWordsRenderFn = refreshAllWordsRender;
 
   // Click to reveal hidden word in Memorization Mode
   document.addEventListener('click', (e) => {

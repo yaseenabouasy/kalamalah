@@ -5,7 +5,11 @@ import { AmlAyahAnimator } from './aml-ayah-animator';
 import { getAmbientMixer } from './ambient-mixer';
 import { BackgroundScenes, type SceneId } from './background-scenes';
 import { formatLocaleDigits, getActiveLocale, isRtlLocale, t } from './i18n';
-import { colorizeArabicWordTajweed, toggleBookmarkAyah } from './reading-tools';
+import {
+  colorizeArabicWordTajweed,
+  toggleBookmarkAyah,
+  setTajweedContext,
+} from './reading-tools';
 import { ScrollController } from './scroll-controller';
 import { SETTINGS_KEYS, readSetting, writeSetting } from './settings-sheet';
 import {
@@ -431,6 +435,9 @@ export class QuranPlayerController {
 
     this.currentSurahNumber = surahNumber;
     this.activeAyahNumber = startAyah && startAyah > 1 ? startAyah : 1;
+
+    // Preload tajweed annotations from quran.islamonline.net (scholar-reviewed)
+    void setTajweedContext(surahNumber, reciterSlug);
 
     const amlScrollEl = document.getElementById('aml-scroll-container');
     if (amlScrollEl) {
