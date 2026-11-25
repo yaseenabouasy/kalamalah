@@ -111,12 +111,6 @@ export const LazyFeatures = {
     const { initMediaSession } = await import('./media-session.js');
     return initMediaSession();
   },
-
-  // Zaraz consent
-  async zaraz() {
-    const { initZarazConsent, setZarazConsent, trackPageView } = await import('./zaraz.js');
-    return { initZarazConsent, setZarazConsent, trackPageView };
-  },
 };
 
 /**
@@ -128,7 +122,6 @@ export function preloadCriticalFeatures(): void {
   const criticalPaths = [
     '/src/client/settings-sheet.js',
     '/src/client/ambient-mixer.js',
-    '/src/client/zaraz.js',
   ];
   
   criticalPaths.forEach(path => {

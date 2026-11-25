@@ -60,3 +60,4 @@ bun.lock
 !.dockerignore
 !LICENSE
 !README.md
+cloudflare-worker.js
