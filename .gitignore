@@ -46,7 +46,7 @@ Thumbs.db
 npm-debug.log*
 
 # Bun
-bun.lock
+# bun.lock is tracked for reproducible installs
 
 # Misc local files
 *.tar

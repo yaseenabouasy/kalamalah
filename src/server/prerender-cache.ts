@@ -28,7 +28,7 @@ async function ensureDiskCacheDir(): Promise<void> {
  * Cache key -> filename. Hashed so that keys which differ only by
  * punctuation (`view-1,from-2` vs `view-1_from-2`) cannot collide.
  */
-function sanitizeKeyToFile(key: string): string {
+export function sanitizeKeyToFile(key: string): string {
   const hash = createHash('sha1').update(key).digest('hex').slice(0, 16);
   return join(CACHE_DIR, `${hash}.html`);
 }

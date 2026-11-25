@@ -8,7 +8,7 @@
     "preinstall": "npx only-allow pnpm",
     "dev": "bun --watch src/server/index.ts --host 0.0.0.0 --port 3000",
     "build:client": "bun build src/client/app.ts --outdir public/js --target browser --format esm --splitting --minify --entry-naming '[name]-[hash].[ext]' --chunk-naming 'chunks/[name]-[hash].[ext]'",
-    "build:manifest": "node -e \"const fs=require('fs'); const path=require('path'); const jsDir='public/js'; const files=fs.readdirSync(jsDir); const app=files.find(f=>f.startsWith('app-')&&f.endsWith('.js')); let chunks=[]; const chunksDir=path.join(jsDir,'chunks'); if(fs.existsSync(chunksDir)){chunks=fs.readdirSync(chunksDir).filter(f=>f.endsWith('.js')).map(f=>'js/chunks/'+f);} fs.writeFileSync('public/js/manifest.json', JSON.stringify({app:'js/'+app,chunks}, null, 2));\"",
+    "build:manifest": "node -e \"const fs=require('fs'); const path=require('path'); const jsDir='public/js'; const files=fs.readdirSync(jsDir); const app=files.find(f=>f.startsWith('app-')&&f.endsWith('.js')); let chunks=[]; const chunksDir=path.join(jsDir,'chunks'); if(fs.existsSync(chunksDir)){chunks=fs.readdirSync(chunksDir).filter(f=>f.endsWith('.js')).map(f=>'/js/chunks/'+f);} fs.writeFileSync('public/js/manifest.json', JSON.stringify({app:'/js/'+app,chunks}, null, 2));\"",
     "build:static": "bun run build:client && bun run build:manifest && bun run src/server/static-export.ts",
     "build": "bun run build:client",
     "start": "bun run src/server/index.ts",
@@ -16,8 +16,22 @@
     "translate:ui": "node scripts/translate-ui.js",
     "scan-i18n": "bun run scripts/scan-i18n.ts",
     "optimize:images": "bun run scripts/optimize-images.ts",
-    "subset:fonts": "bun run scripts/subset-fonts.ts"
+    "subset:fonts": "bun run scripts/subset-fonts.ts",
+    "test": "bun test",
+    "size:limit": "bunx size-limit"
   },
+  "size-limit": [
+    {
+      "path": "public/js/app-*.js",
+      "limit": "180 kB",
+      "brotli": true
+    },
+    {
+      "path": "public/css/app.css",
+      "limit": "22 kB",
+      "brotli": true
+    }
+  ],
   "dependencies": {
     "hono": "^4.7.4"
   },

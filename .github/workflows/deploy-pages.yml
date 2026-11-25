@@ -40,6 +40,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Type check
+        run: bunx tsc --noEmit
+
+      - name: Run tests
+        run: bun test
+
       - name: Build client
         run: bun run build:client
 
