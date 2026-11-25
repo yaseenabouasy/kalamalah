@@ -29,6 +29,12 @@ const IS_MAC = process.platform === 'darwin';
 const IS_WIN = process.platform === 'win32';
 const DISCORD_CLIENT_ID = process.env.KALAMALAH_DISCORD_CLIENT_ID || '';
 
+const ALLOWED_SETTINGS_KEYS = new Set([
+  'windowBounds',
+  'windowMaximized',
+  'discordRPCEnabled',
+]);
+
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
@@ -334,11 +340,13 @@ function disablePowerSaveBlocker() {
 // ---------------------------------------------------------------------------
 // Navigation policy
 // ---------------------------------------------------------------------------
+const ALLOWED_EXTERNAL_PROTOCOLS = ['https:', 'http:', 'mailto:'];
+
 function isInternalUrl(rawUrl) {
   try {
     const { protocol, hostname } = new URL(rawUrl);
     if (protocol !== 'https:' && protocol !== 'http:') return false;
-    return hostname === 'kalamalah.com' || hostname.endsWith('.kalamalah.com');
+    return hostname === 'kalamalah.com';
   } catch {
     return false;
   }
@@ -346,7 +354,12 @@ function isInternalUrl(rawUrl) {
 
 function openExternal(rawUrl) {
   try {
-    void shell.openExternal(rawUrl);
+    const u = new URL(rawUrl);
+    if (!ALLOWED_EXTERNAL_PROTOCOLS.includes(u.protocol)) {
+      log.warn('Blocked external url with non-allowed protocol:', u.protocol);
+      return;
+    }
+    void shell.openExternal(u.href);
   } catch (err) {
     log.warn('Failed to open external url:', err?.message || err);
   }
@@ -582,7 +595,13 @@ function registerIpc() {
 
   // Settings
   ipcMain.handle('settings:get', (_event, key) => store.get(key));
-  ipcMain.on('settings:set', (_event, key, value) => store.set(key, value));
+  ipcMain.on('settings:set', (_event, key, value) => {
+    if (!ALLOWED_SETTINGS_KEYS.has(key)) {
+      log.warn('Rejected settings:set for disallowed key:', key);
+      return;
+    }
+    store.set(key, value);
+  });
   ipcMain.handle('settings:getAll', () => store.store);
 
   // App info

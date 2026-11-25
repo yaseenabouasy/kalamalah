@@ -89,12 +89,9 @@ export class QuranPlayerController {
   }
 
   private computeSystemTimingOffset(reciterSlug: string, surahNumber: number): number {
-    const slug = (reciterSlug || '').toLowerCase();
-    if (slug.includes('dosari') || slug.includes('dousari') || slug.includes('dussary') || slug.includes('yasser')) {
-      if (surahNumber === 2 || surahNumber === 3 || surahNumber === 5) return 3400;
-      if (surahNumber === 4) return 2600;
-      return 3100;
-    }
+    // Timing offsets are handled per-source in the timing service.
+    // Do not apply per-reciter hardcoded offsets here — they cause double-shifting
+    // when the timing source already includes its own offset.
     return 0;
   }
   private repeatMode: 'off' | 'surah' | 'ayah' = 'off';
@@ -365,17 +362,14 @@ export class QuranPlayerController {
     this.showWordTranslation(surahNum, ayahNum, wordIdx);
   }
 
-  /** Show translation for a specific word in a tooltip/popover */
+  /** Show ayah translation for a clicked word (per-word translation data not available) */
   private showWordTranslation(surahNum: number, ayahNum: number, wordIdx: number): void {
     const ayahData = this.currentAyahsData.find((a) => a.n === ayahNum);
     if (!ayahData?.tr) return;
 
-    // Find the word translation - translations are usually space-separated
-    const trWords = ayahData.tr.trim().split(/\s+/);
-    if (wordIdx >= trWords.length) return;
-
-    const wordTr = trWords[wordIdx];
-    if (!wordTr) return;
+    // Per-word translation data is not available from the current API.
+    // Show the full ayah translation with word context instead of wrong word mapping.
+    const wordNum = wordIdx + 1;
 
     // Create or update translation tooltip
     let tooltip = document.getElementById('kalamalah-word-tooltip');
@@ -399,11 +393,10 @@ export class QuranPlayerController {
       `;
       document.body.appendChild(tooltip);
     }
-    tooltip.textContent = wordTr;
+    tooltip.textContent = `Word ${wordNum}: ${ayahData.tr}`;
     tooltip.style.opacity = '1';
 
-    // Position near the clicked word (we'll need the click event for this)
-    // For now, show near the bottom of the screen
+    // Position near the bottom of the screen
     tooltip.style.bottom = '100px';
     tooltip.style.left = '50%';
     tooltip.style.transform = 'translateX(-50%)';
@@ -1391,6 +1384,23 @@ export class QuranPlayerController {
       const el = document.getElementById(scrubberId);
       if (!el) return;
       const maxValue = Number(el.dataset.max ?? 1000);
+      const setTimeFromEvent = (evt: MouseEvent) => {
+        if (!this.audioEl.duration) return;
+        const rect = el.getBoundingClientRect();
+        const x = evt.clientX - rect.left;
+        const value = Math.max(0, Math.min(1, x / rect.width));
+        this.audioEl.currentTime = value * this.audioEl.duration;
+      };
+      // Click to seek
+      el.addEventListener('click', setTimeFromEvent);
+      // Drag to seek
+      let isDragging = false;
+      el.addEventListener('mousedown', () => { isDragging = true; });
+      el.addEventListener('mousemove', (evt) => {
+        if (isDragging) setTimeFromEvent(evt);
+      });
+      el.addEventListener('mouseup', () => { isDragging = false; this.startSyncLoop(); });
+      el.addEventListener('mouseleave', () => { isDragging = false; });
       // AeroUI elastic slider: listen for input (drag) and change (release)
       el.addEventListener('input', (e: Event) => {
         const value = (e as CustomEvent<{ value: number }>).detail?.value;

@@ -24,6 +24,9 @@ interface SavedBookmark {
 const BOOKMARKS_KEY = 'kalamalah_bookmarks_v1';
 const LAST_READ_KEY = 'kalamalah_last_read_v1';
 
+// AbortController for cleaning up listeners on re-init (soft nav)
+let readingToolsController: AbortController | null = null;
+
 /**
  * Applies Tajweed color markup to an Arabic word without breaking ligatures.
  */
@@ -153,9 +156,12 @@ export function filterWordDiacritics(rawWord: string, preset: TashkeelPreset): s
   return rawWord;
 }
 
-let readingToolsGlobalBound = false;
-
 export function initReadingTools(): void {
+  // Abort previous listeners to prevent leaks on soft navigation
+  readingToolsController?.abort();
+  readingToolsController = new AbortController();
+  const signal = readingToolsController.signal;
+
   let tajweedEnabled = localStorage.getItem('kalamalah_tajweed_enabled') === '1';
   let currentTajweedSchema: TajweedSchema = 'printed';
   let currentTashkeelPreset: TashkeelPreset = 'all';
@@ -203,15 +209,13 @@ export function initReadingTools(): void {
   }
 
   // Click to reveal hidden word in Memorization Mode
-  if (!readingToolsGlobalBound) {
-    document.addEventListener('click', (e) => {
-      const target = (e.target as HTMLElement | null)?.closest<HTMLElement>('.quran-word.memo-hidden-word');
-      if (target) {
-        e.stopPropagation();
-        target.classList.toggle('memo-revealed-word');
-      }
-    });
-  }
+  document.addEventListener('click', (e) => {
+    const target = (e.target as HTMLElement | null)?.closest<HTMLElement>('.quran-word.memo-hidden-word');
+    if (target) {
+      e.stopPropagation();
+      target.classList.toggle('memo-revealed-word');
+    }
+  }, { signal });
 
   // 0. Collapsible Reading Toolbar Section
   const toolbarSection = document.getElementById('reading-toolbar-section');
@@ -233,7 +237,7 @@ export function initReadingTools(): void {
   toolbarToggleBtn?.addEventListener('click', () => {
     const isNowCollapsed = !toolbarSection?.classList.contains('is-collapsed');
     setToolbarCollapsed(isNowCollapsed);
-  });
+  }, { signal });
 
   filterShortcutBtn?.addEventListener('click', () => {
     setToolbarCollapsed(false);
@@ -243,7 +247,7 @@ export function initReadingTools(): void {
       rangeToggle?.click();
     }
     toolbarSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
+  }, { signal });
 
   // 1. Reading Fonts Switcher (Uthmani, Kitab, Amiri, and Nastaleeq last)
   const rawSavedFont = localStorage.getItem('kalamalah_reading_font') || 'kitab';
@@ -266,14 +270,14 @@ export function initReadingTools(): void {
     btn.addEventListener('click', () => {
       const font = btn.getAttribute('data-set-reading-font') as ReadingFont;
       setReadingFont(font);
-    });
+    }, { signal });
   });
 
   // Sync with mobile sidebar reading font dropdown
   window.addEventListener('kalamalah:reading-font-changed', (e: Event) => {
     const ce = e as CustomEvent<{ font: ReadingFont }>;
     setReadingFont(ce.detail.font);
-  });
+  }, { signal });
 
   // 2. Font Size Stepper
   const fontValEl = document.getElementById('font-size-val');
@@ -285,14 +289,14 @@ export function initReadingTools(): void {
   };
   applyFontScale(fontSizePercent);
 
-  document.getElementById('font-size-dec')?.addEventListener('click', () => applyFontScale(fontSizePercent - 10));
-  document.getElementById('font-size-inc')?.addEventListener('click', () => applyFontScale(fontSizePercent + 10));
+  document.getElementById('font-size-dec')?.addEventListener('click', () => applyFontScale(fontSizePercent - 10), { signal });
+  document.getElementById('font-size-inc')?.addEventListener('click', () => applyFontScale(fontSizePercent + 10), { signal });
 
   // Sync with the shared Settings sheet
   window.addEventListener('kalamalah:font-scale-changed', (e: Event) => {
     const scale = Number((e as CustomEvent<{ scale: number }>).detail?.scale);
     if (Number.isFinite(scale)) applyFontScale(scale);
-  });
+  }, { signal });
 
   // 3. View Mode Switcher (Cards / Continuous Mushaf / With Inline Tafseer)
   const wrapperEl = document.getElementById('surah-ayahs-wrapper');
@@ -306,7 +310,7 @@ export function initReadingTools(): void {
       document.querySelectorAll<HTMLElement>('.ayah-inline-tafseer').forEach((tf) => {
         tf.classList.toggle('hidden', mode !== 'tafseer-open');
       });
-    });
+    }, { signal });
   });
 
   // 4. Tajweed Color Toggle & Subpanel
@@ -319,7 +323,7 @@ export function initReadingTools(): void {
     tajweedToggleBtn.setAttribute('aria-pressed', String(tajweedEnabled));
     tajweedPanel?.classList.toggle('hidden', !tajweedEnabled);
     refreshAllWordsRender();
-  });
+  }, { signal });
 
   // Sync with mobile sidebar tajweed toggle
   window.addEventListener('kalamalah:tajweed-changed', (e: Event) => {
@@ -329,14 +333,14 @@ export function initReadingTools(): void {
     tajweedToggleBtn?.setAttribute('aria-pressed', String(tajweedEnabled));
     tajweedPanel?.classList.toggle('hidden', !tajweedEnabled);
     refreshAllWordsRender();
-  });
+  }, { signal });
 
   document.querySelectorAll<HTMLElement>('[data-tajweed-schema]').forEach((btn) => {
     btn.addEventListener('click', () => {
       currentTajweedSchema = (btn.getAttribute('data-tajweed-schema') as TajweedSchema) || 'printed';
       document.querySelectorAll('[data-tajweed-schema]').forEach((b) => b.classList.toggle('active', b === btn));
       refreshAllWordsRender();
-    });
+    }, { signal });
   });
 
   // 5. Diacritics Panel & Presets
@@ -346,7 +350,7 @@ export function initReadingTools(): void {
     const hidden = diacriticsPanel?.classList.toggle('hidden');
     diacriticsBtn.classList.toggle('active', !hidden);
     localStorage.setItem('kalamalah_diacritics_enabled', (!hidden) ? '1' : '0');
-  });
+  }, { signal });
 
   // Sync with mobile sidebar diacritics toggle
   window.addEventListener('kalamalah:diacritics-changed', (e: Event) => {
@@ -354,14 +358,14 @@ export function initReadingTools(): void {
     const hidden = ce.detail.enabled ? false : true;
     diacriticsPanel?.classList.toggle('hidden', hidden);
     diacriticsBtn?.classList.toggle('active', ce.detail.enabled);
-  });
+  }, { signal });
 
   document.querySelectorAll<HTMLElement>('[data-tashkeel-preset]').forEach((btn) => {
     btn.addEventListener('click', () => {
       currentTashkeelPreset = (btn.getAttribute('data-tashkeel-preset') as TashkeelPreset) || 'all';
       document.querySelectorAll('[data-tashkeel-preset]').forEach((b) => b.classList.toggle('active', b === btn));
       refreshAllWordsRender();
-    });
+    }, { signal });
   });
 
   window.addEventListener('kalamalah:tashkeel-changed', (e: Event) => {
@@ -371,7 +375,7 @@ export function initReadingTools(): void {
       b.classList.toggle('active', b.getAttribute('data-tashkeel-preset') === preset);
     });
     refreshAllWordsRender();
-  });
+  }, { signal });
 
   // 6. Memorization Panel & Density
   const memoBtn = document.getElementById('memorization-panel-toggle');
@@ -380,7 +384,7 @@ export function initReadingTools(): void {
     const hidden = memoPanel?.classList.toggle('hidden');
     memoBtn.classList.toggle('active', !hidden);
     localStorage.setItem('kalamalah_memorization_enabled', (!hidden) ? '1' : '0');
-  });
+  }, { signal });
 
   // Sync with mobile sidebar memorization toggle
   window.addEventListener('kalamalah:memorization-changed', (e: Event) => {
@@ -388,19 +392,19 @@ export function initReadingTools(): void {
     const hidden = ce.detail.enabled ? false : true;
     memoPanel?.classList.toggle('hidden', hidden);
     memoBtn?.classList.toggle('active', ce.detail.enabled);
-  });
+  }, { signal });
 
   document.querySelectorAll<HTMLElement>('[data-memo-density]').forEach((btn) => {
     btn.addEventListener('click', () => {
       currentMemoDensity = Number(btn.getAttribute('data-memo-density') || 0);
       document.querySelectorAll('[data-memo-density]').forEach((b) => b.classList.toggle('active', b === btn));
       refreshAllWordsRender();
-    });
+    }, { signal });
   });
 
   document.getElementById('memo-reveal-all-btn')?.addEventListener('click', () => {
     wordEls().forEach((w) => w.classList.add('memo-revealed-word'));
-  });
+  }, { signal });
 
   // 7. Range Filter & In-Surah Search Panel
   const rangeToggleBtn = document.getElementById('range-filter-toggle');
@@ -408,7 +412,7 @@ export function initReadingTools(): void {
   rangeToggleBtn?.addEventListener('click', () => {
     const hidden = rangePanel?.classList.toggle('hidden');
     rangeToggleBtn.classList.toggle('active', !hidden);
-  });
+  }, { signal });
 
   document.getElementById('apply-range-btn')?.addEventListener('click', (e) => {
     const btn = e.currentTarget as HTMLElement;
@@ -416,7 +420,7 @@ export function initReadingTools(): void {
     const fromVal = (document.getElementById('range-from-input') as HTMLInputElement | null)?.value || '1';
     const toVal = (document.getElementById('range-to-input') as HTMLInputElement | null)?.value || '7';
     window.location.href = `/view-${sNum},from-${fromVal},to-${toVal}`;
-  });
+  }, { signal });
 
   const inSurahInput = document.getElementById('in-surah-search-input') as HTMLInputElement | null;
   inSurahInput?.addEventListener('input', () => {
@@ -428,10 +432,10 @@ export function initReadingTools(): void {
       const match = !q || raw.includes(q) || stripped.includes(q) || num === q;
       card.style.display = match ? '' : 'none';
     });
-  });
+  }, { signal });
 
   // 8. Copy Ayah, Bookmark Ayah, & Reading Tracker
-  initBookmarksAndTracker();
+  initBookmarksAndTracker(signal);
 }
 
 function getBookmarks(): SavedBookmark[] {
@@ -504,13 +508,13 @@ function renderBookmarksModalList(): void {
   });
 }
 
-function initBookmarksAndTracker(): void {
+export function initBookmarksAndTracker(signal: AbortSignal): void {
   renderBookmarksModalList();
 
   document.getElementById('open-bookmarks-btn')?.addEventListener('click', () => {
     renderBookmarksModalList();
     document.getElementById('bookmarksModal')?.classList.remove('hidden');
-  });
+  }, { signal });
 
   const wrapper = document.getElementById('surah-ayahs-wrapper');
   const surahNum = Number(wrapper?.getAttribute('data-surah-number') || 0);
@@ -518,43 +522,40 @@ function initBookmarksAndTracker(): void {
   const surahNameEn = wrapper?.getAttribute('data-surah-name-en') || '';
 
   // Copy & Bookmark buttons on Ayah cards
-  if (!readingToolsGlobalBound) {
-    readingToolsGlobalBound = true;
-    document.addEventListener('click', (e) => {
-      const copyBtn = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-copy-ayah]');
-      if (copyBtn) {
-        const w = document.getElementById('surah-ayahs-wrapper');
-        const sNameAr = w?.getAttribute('data-surah-name-ar') || '';
-        const ayahNum = copyBtn.getAttribute('data-copy-ayah');
-        const card = document.getElementById(`ayah-${ayahNum}`);
-        const text = card?.getAttribute('data-raw-arabic') || '';
-        if (text) {
-          navigator.clipboard?.writeText(`${text} ﴿سورة ${sNameAr}: ${ayahNum}﴾`);
-          const span = copyBtn.querySelector('span');
-          if (span) {
-            const prev = span.textContent;
-            span.textContent = 'تم النسخ';
-            setTimeout(() => {
-              span.textContent = prev;
-            }, 1600);
-          }
-        }
-        return;
-      }
-
-      const bmBtn = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-bookmark-ayah]');
+  document.addEventListener('click', (e) => {
+    const copyBtn = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-copy-ayah]');
+    if (copyBtn) {
       const w = document.getElementById('surah-ayahs-wrapper');
-      const sNum = Number(w?.getAttribute('data-surah-number') || 0);
       const sNameAr = w?.getAttribute('data-surah-name-ar') || '';
-      if (bmBtn && sNum > 0) {
-        const ayahNum = Number(bmBtn.getAttribute('data-bookmark-ayah') || 1);
-        const card = document.getElementById(`ayah-${ayahNum}`);
-        const text = card?.getAttribute('data-raw-arabic') || '';
-        const isAdded = toggleBookmarkAyah(sNum, sNameAr, ayahNum, text);
-        bmBtn.classList.toggle('active', isAdded);
+      const ayahNum = copyBtn.getAttribute('data-copy-ayah');
+      const card = document.getElementById(`ayah-${ayahNum}`);
+      const text = card?.getAttribute('data-raw-arabic') || '';
+      if (text) {
+        navigator.clipboard?.writeText(`${text} ﴿سورة ${sNameAr}: ${ayahNum}﴾`);
+        const span = copyBtn.querySelector('span');
+        if (span) {
+          const prev = span.textContent;
+          span.textContent = 'تم النسخ';
+          setTimeout(() => {
+            span.textContent = prev;
+          }, 1600);
+        }
       }
-    });
-  }
+      return;
+    }
+
+    const bmBtn = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-bookmark-ayah]');
+    const w = document.getElementById('surah-ayahs-wrapper');
+    const sNum = Number(w?.getAttribute('data-surah-number') || 0);
+    const sNameAr = w?.getAttribute('data-surah-name-ar') || '';
+    if (bmBtn && sNum > 0) {
+      const ayahNum = Number(bmBtn.getAttribute('data-bookmark-ayah') || 1);
+      const card = document.getElementById(`ayah-${ayahNum}`);
+      const text = card?.getAttribute('data-raw-arabic') || '';
+      const isAdded = toggleBookmarkAyah(sNum, sNameAr, ayahNum, text);
+      bmBtn.classList.toggle('active', isAdded);
+    }
+  }, { signal });
 
   // Reading Tracker banner restoration
   const trackerEl = document.getElementById('reading-tracker');
@@ -577,11 +578,10 @@ function initBookmarksAndTracker(): void {
 
   document.getElementById('rt-dismiss-btn')?.addEventListener('click', () => {
     trackerEl?.classList.add('hidden');
-  });
+  }, { signal });
 
   // Save current reading position when scrolling through a Surah
   if (surahNum > 0 && surahNameAr) {
-    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
     // Use IntersectionObserver instead of scroll + getBoundingClientRect to avoid forced reflows
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {

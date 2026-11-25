@@ -4,20 +4,16 @@
  * GitHub Pages + content-hash filenames = immutable caching
  */
 
-const STATIC_CACHE = 'kalamalah-static-v3';
-const HTML_CACHE = 'kalamalah-html-v3';
-const API_CACHE = 'kalamalah-api-v3';
+const STATIC_CACHE = 'kalamalah-static-v4';
+const HTML_CACHE = 'kalamalah-html-v4';
+const API_CACHE = 'kalamalah-api-v4';
 
-// Install - cache critical assets
+// Install - cache critical assets (use allSettled so one 404 doesn't fail install)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
-      // These will be added dynamically on first fetch
-      return cache.addAll([
-        '/',
-        '/index.html',
-        '/manifest.json',
-      ]);
+      const urls = ['/', '/manifest.json'];
+      return Promise.allSettled(urls.map((u) => cache.add(u)));
     }).then(() => self.skipWaiting())
   );
 });
@@ -25,7 +21,7 @@ self.addEventListener('install', (event) => {
 // Activate - clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => 
+    caches.keys().then((keys) =>
       Promise.all(keys.filter(k => ![STATIC_CACHE, HTML_CACHE, API_CACHE].includes(k)).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
@@ -43,16 +39,19 @@ self.addEventListener('fetch', (event) => {
   if (!url.protocol.startsWith('http')) return;
 
   // Skip cross-origin (except our API domains)
-  const isOurAPI = url.hostname === 'api.kalamalah.com' || 
-                   url.hostname === 'api.qurancdn.com' ||
-                   url.hostname === 'cdn.islam-online.net' ||
-                   url.hostname === 'verses.quran.com' ||
-                   url.hostname === 'api.aladhan.com';
-  
+  const isOurAPI = url.hostname === 'api.kalamalah.com' ||
+    url.hostname === 'api.qurancdn.com' ||
+    url.hostname === 'cdn.islam-online.net' ||
+    url.hostname === 'verses.quran.com' ||
+    url.hostname === 'api.aladhan.com';
+
   if (url.hostname !== location.hostname && !isOurAPI) return;
 
-  // Skip audio/Range requests (streaming) - never cache
+  // Skip audio/Range requests (streaming) - never cache MP3s
   if (request.headers.has('range') || url.pathname.match(/\.(mp3|m4a|ogg)$/)) return;
+
+  // Skip API download endpoints (large MP3 files) - never cache
+  if (url.pathname.startsWith('/api/download/')) return;
 
   // HTML pages: Network-first + cache fallback + stale-while-revalidate
   if (url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/')) {
@@ -61,20 +60,20 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Static assets (hashed filenames): Cache-first (immutable)
-  if (url.pathname.startsWith('/fonts/') || 
-      url.pathname.startsWith('/css/') || 
-      url.pathname.startsWith('/js/') || 
-      url.pathname.startsWith('/images/') || 
-      url.pathname.startsWith('/icons/') || 
-      url.pathname.startsWith('/vendor/') || 
-      url.pathname.startsWith('/media/') ||
-      url.pathname === '/manifest.json' ||
-      url.pathname === '/sw.js') {
+  if (url.pathname.startsWith('/fonts/') ||
+    url.pathname.startsWith('/css/') ||
+    url.pathname.startsWith('/js/') ||
+    url.pathname.startsWith('/images/') ||
+    url.pathname.startsWith('/icons/') ||
+    url.pathname.startsWith('/vendor/') ||
+    url.pathname.startsWith('/media/') ||
+    url.pathname === '/manifest.json' ||
+    url.pathname === '/sw.js') {
     event.respondWith(cacheFirstThenNetwork(request, STATIC_CACHE));
     return;
   }
 
-  // API: Network-first, cache fallback
+  // API: Network-first, cache fallback (no MP3s)
   if (url.pathname.startsWith('/api/') || isOurAPI) {
     event.respondWith(networkFirstThenCache(request, API_CACHE));
     return;
@@ -100,7 +99,7 @@ async function cacheFirstThenNetwork(request, cacheName) {
 
 async function networkFirstThenCache(request, cacheName) {
   const cache = await caches.open(cacheName);
-  
+
   try {
     const response = await fetch(request);
     if (response.ok) cache.put(request, response.clone());

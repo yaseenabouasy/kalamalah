@@ -61,11 +61,6 @@ async function runStaticExport(): Promise<void> {
 
   // 1. Copy public/ assets and main/ fallback fonts & icons
   await cp(PUBLIC_DIR, DIST_DIR, { recursive: true });
-  // Copy vendor/ files for static export (timing, fonts, AeroUI components)
-  const vendorSrc = join(ROOT, 'vendor');
-  if (existsSync(vendorSrc)) {
-    await cp(vendorSrc, join(DIST_DIR, 'vendor'), { recursive: true });
-  }
   if (existsSync(join(PUBLIC_DIR, 'favicon', 'site.webmanifest'))) {
     await cp(join(PUBLIC_DIR, 'favicon', 'site.webmanifest'), join(DIST_DIR, 'site.webmanifest'));
   }
@@ -77,6 +72,7 @@ async function runStaticExport(): Promise<void> {
     await mkdir(join(DIST_DIR, 'icons'), { recursive: true });
     await cp(MAIN_ICONS_DIR, join(DIST_DIR, 'icons'), { recursive: true });
   }
+  // Copy vendor/ AFTER timing files are generated (below) so index.json exists
 
   // 2. GitHub Pages config & SEO files
   await writeFile(join(DIST_DIR, '.nojekyll'), '', 'utf8');
@@ -193,7 +189,8 @@ async function runStaticExport(): Promise<void> {
               const fileContent = await readFile(filePath, 'utf8');
               timings = JSON.parse(fileContent);
             } else {
-              timings = await resolveSurahTimings(reciter.slug, s);
+              // Use provider-specific slug (qurancdnId, islamOnlineTimingSlug, mp3QuranReadId)
+              timings = await resolveSurahTimings(providerSlug, s);
               if (timings && timings.ayahs.length > 0 && timings.mode === 'word') {
                 await writeFile(join(providerDir, filename), JSON.stringify(timings), 'utf8');
               } else {
@@ -226,6 +223,12 @@ async function runStaticExport(): Promise<void> {
     // Write manifest
     await writeFile(join(ROOT, 'vendor', 'timing', 'index.json'), JSON.stringify(manifest, null, 2), 'utf8');
     console.log(`[Kalamalah Static] Wrote vendor/timing/index.json`);
+
+    // Copy vendor/ NOW (after timing files generated) so dist/vendor/timing/index.json exists
+    const vendorSrc = join(ROOT, 'vendor');
+    if (existsSync(vendorSrc)) {
+      await cp(vendorSrc, join(DIST_DIR, 'vendor'), { recursive: true });
+    }
 
     // Build per-reciter timing caches
     const reciterTimingCaches = new Map<string, Map<number, NormalizedSurahTimings>>();
@@ -263,14 +266,12 @@ async function runStaticExport(): Promise<void> {
           const timings = firstReciterCache?.get(id) ?? null;
           await writeHtmlSlug(`surah-${id}`, renderSurahPage({ surahDetail: detail, defaultTimings: timings }));
           
-          // Also render surah with slug, reader, and view routes
+          // Also render surah with slug and reader routes
           const meta = SURAHS_META.find(m => m.number === id);
           if (meta) {
-            await writeHtmlSlug(`surah-${id}-${meta.slug}`, renderSurahPage({ surahDetail: detail, defaultTimings: timings }));
-            await writeHtmlSlug(`reader-${id}-${meta.slug}`, renderSurahPage({ surahDetail: detail, defaultTimings: timings }));
-            for (let ayah = 1; ayah <= detail.ayahs.length; ayah++) {
-              await writeHtmlSlug(`view-${id},from-${ayah},to-${ayah}`, renderSurahPage({ surahDetail: detail, defaultTimings: timings }));
-            }
+            const slug = meta.nameEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            await writeHtmlSlug(`surah-${id}-${slug}`, renderSurahPage({ surahDetail: detail, defaultTimings: timings }));
+            await writeHtmlSlug(`reader-${id}-${slug}`, renderSurahPage({ surahDetail: detail, defaultTimings: timings }));
           }
           
           await new Promise((r) => setTimeout(r, 300));
