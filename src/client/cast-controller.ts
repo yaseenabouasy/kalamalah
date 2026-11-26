@@ -1,3 +1,11 @@
+/** Web Presentation API session type (not in default TS lib). */
+interface PresentationSession {
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject): void;
+  removeEventListener(type: string, listener: EventListenerOrEventListenerObject): void;
+  terminate(): Promise<void>;
+  setSinkId?(sinkId: string): Promise<void>;
+}
+
 export function initCastController(): void {
   const audioEl = document.getElementById('kalamalah-audio-el') as HTMLAudioElement | null;
   let session: PresentationSession | null = null;
@@ -35,7 +43,7 @@ export function initCastController(): void {
         return;
       }
       session = await request.start();
-      session.addEventListener('terminate', onTerminate);
+      session?.addEventListener('terminate', onTerminate);
       attachAudio();
       // Hide local UI while casting
       document.body.style.display = 'none';
