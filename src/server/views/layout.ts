@@ -234,8 +234,8 @@ html[data-theme="dark"] {
   --text-primary:#f4efe4;--text-secondary:#aab4ac;--text-muted:#7f8a85;
   --gold:#d6bb8a;--gold-bright:#ecd6a8;--gold-soft:rgba(214,187,138,.14);
   --btn-gold-bg:#d6bb8a;--btn-gold-bg-hover:#ecd6a8;--btn-gold-fg:#090d16;
-  --emerald:#93b3a0;--emerald-soft:rgba(147,179,160,.16);--cyan:#93b3a0;--cyan-soft:rgba(147,179,160,.16);
-  --danger:#e0857a;
+  --emerald:#10b981;--emerald-soft:rgba(16,185,129,.16);--cyan:#22d3ee;--cyan-soft:rgba(34,211,238,.16);
+  --danger:#e0857a;--halo:#12151a;--ink:#c8a45d;--tone:#c8a45d;--paper:#f4efe4;
   --mushaf-paper:#171b21;--mushaf-frame:rgba(214,187,138,.24);
   --overlay-shadow:0 22px 54px rgba(0,0,0,.55);--shadow-lg:0 18px 42px rgba(0,0,0,.5);
   --player-bar-height:74px;--quran-font-scale:1;color-scheme:dark;
@@ -246,8 +246,8 @@ html[data-theme="light"] {
   --text-primary:#171a1f;--text-secondary:#474f4b;--text-muted:#566059;
   --gold:#7a5614;--gold-bright:#5d4010;--gold-soft:rgba(154,118,56,.18);
   --btn-gold-bg:#7a5614;--btn-gold-bg-hover:#5d4010;--btn-gold-fg:#fff;
-  --emerald:#2d5038;--emerald-soft:rgba(63,99,80,.18);--cyan:#2d5038;--cyan-soft:rgba(63,99,80,.18);
-  --danger:#a03022;
+  --emerald:#047857;--emerald-soft:rgba(4,120,87,.18);--cyan:#0891b2;--cyan-soft:rgba(8,145,178,.18);
+  --danger:#a03022;--halo:#fbf9f3;--ink:#7a5614;--tone:#7a5614;--paper:#171a1f;
   --mushaf-paper:#fff;--mushaf-frame:rgba(154,118,56,.32);
   --overlay-shadow:0 18px 44px rgba(28,32,38,.16);--shadow-lg:0 16px 38px rgba(28,32,38,.14);
   color-scheme:light;
@@ -333,7 +333,7 @@ export function renderLayout(props: LayoutProps): string {
     appJs = manifest.app || '/js/app.js';
     if (manifest.chunks?.length) {
       modulePreloads = manifest.chunks.map((chunk: string) =>
-        `<link rel="modulepreload" href="/${chunk}" />`
+        `<link rel="modulepreload" href="${chunk}" />`
       ).join('\n');
     }
   } catch {}
@@ -419,6 +419,10 @@ export function renderLayout(props: LayoutProps): string {
 
   <!-- Blocking CSS (small, ~18KB Brotli) - No print trick, no FOUC/CLS -->
   <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/css/aeroui.css" />
+  <link rel="stylesheet" href="/css/settings-sheet.css" />
+  <link rel="stylesheet" href="/css/searchable-dropdown.css" />
+  <link rel="stylesheet" href="/css/fullscreen-player.css" />
 
   <!-- Early Theme Initialization (Auto from browser if unset, Dark/Light toggleable) -->
   <script>
@@ -760,7 +764,7 @@ export function renderLayout(props: LayoutProps): string {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.17 1.18a11.05 11.05 0 0 1 5.78 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.24 2.75.12 3.04.74.81 1.18 1.83 1.18 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
             <span>المصدر على GitHub</span>
           </a>
-          <p class="dev-made-with-love">صنع بكل <span>❤️</span> للعالم.</p>
+          <p class="dev-made-with-love">صنع بكل <span aria-label="heart"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"></path></svg></span> للعالم.</p>
         </div>
       </div>
     </div>
@@ -907,6 +911,7 @@ export function renderLayout(props: LayoutProps): string {
       <div class="aml-top-right-cluster">
         <div class="aml-scene-pill-wrap">
           <button type="button" id="aml-bg-mode-btn" class="aml-scene-pill" aria-haspopup="menu" aria-expanded="false" aria-controls="aml-scene-menu" title="اختر مشهد الخلفية">
+            <span id="aml-bg-mode-cover" class="aml-scene-cover" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 240 240" fill="none"><circle cx="120" cy="120" r="88" fill="var(--halo)"/><g fill="var(--paper)" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(32.013 28.174) scale(0.723)" stroke-width="3.321"><ellipse cx="122" cy="198" rx="76" ry="4" fill="var(--tone)" stroke="none"/><path d="M48 158l30-15H198l-30 15Z" fill="var(--paper)"/><path d="M48 158v-7l2.5-4.25L53 148.5v4l5-2.5v-4l2.5-4.25L63 143.5v4l5-2.5v-4l2.5-4.25L73 138.5v4l5-2.5v-4v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v7H78Z" fill="var(--paper)"/><g transform="translate(-9 2)"><path d="M163 158l5-100h10l5 100" fill="var(--paper)"/><path d="M173 43V37"/><circle cx="173" cy="34.5" r="2.5" fill="var(--paper)"/><path d="M170.75 65.75V63.73c0-1.54 1.49-2.23 2.25-2.48c.77 .25 2.25 .94 2.25 2.48v2.02ZM170.5 88V83.5c0-3.41 1.65-4.95 2.5-5.5c.85 .55 2.5 2.09 2.5 5.5V88Zm-1 56v-5.4c0-4.09 2.31-5.94 3.5-6.6c1.19 .66 3.5 2.51 3.5 6.6V144Z" fill="var(--tone)" stroke-width="2.145"/><path d="M166 100l3.5 3l3.5-3l3.5 3l3.5-3m-14 6l3.5 3l3.5-3l3.5 3l3.5-3m-14 6l3.5 3l3.5-3l3.5 3l3.5-3" stroke-width="2.145"/><path d="M168 58c0-7 3-12 5-15c2 3 5 8 5 15Zm-5.5 13.5q0-2.5 2.5-2.5h16q2.5 0 2.5 2.5v0q0 2.5-2.5 2.5H165q-2.5 0-2.5-2.5Zm-1.5 22q0-2.5 2.5-2.5h19q2.5 0 2.5 2.5v0q0 2.5-2.5 2.5h-19q-2.5 0-2.5-2.5ZM159 123q0-3 3-3h22q3 0 3 3v0q0 3-3 3H162q-3 0-3-3Z" fill="var(--tone)"/></g><g transform="translate(20.16 28.44) scale(0.82)" stroke-width="4.05"><path d="M70 143h84v15H70Z" fill="var(--tone)"/><path d="M70 143V121c1-18 11-27 26-36c8-4 12-7 14-8h4c6 4 9 5 14 8c16 9 25 18 26 36v22Z" fill="var(--tone)"/><path d="M70 121h84m-72 0c1-18 17-31 26-40M98 121c0-20 8-33 13-41m15 41c0-20-8-33-13-41m29 41c-1-18-17-31-26-40" stroke-width="2.615"/><path d="M76.5 134v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Z" fill="var(--paper)" stroke-width="2.615"/><path d="M108 77l4-6l4 6Z" fill="var(--paper)"/><path d="M112 71V59"/><circle cx="112" cy="66" r="2" fill="var(--tone)" stroke-width="2.615"/><path d="M112 54q-3.5 5 0 7q3.5-2 0-7Z" fill="var(--tone)" stroke-width="2.615"/></g><path d="M48 158H168v38H48Z" fill="var(--paper)"/><path d="M168 158l30-15v38l-30 15Z" fill="var(--tone)"/><path d="M55.5 191V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Z" fill="var(--tone)" stroke-width="2.145"/><g transform="matrix(1 -.5 0 1 178 186)"><path d="M-3.5 0V-9.9C-3.5-17.4-1.19-20.79 0-22c1.19 1.21 3.5 4.6 3.5 12.1V0Z" fill="var(--paper)" stroke-width="2.145"/></g><g transform="matrix(1 -.5 0 1 190 180)"><path d="M-3.5 0V-9.9C-3.5-17.4-1.19-20.79 0-22c1.19 1.21 3.5 4.6 3.5 12.1V0Z" fill="var(--paper)" stroke-width="2.145"/></g><path d="M48 158v-7l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l2.5-4.25l2.5 1.75v4l5-2.5v-4l2.5-4.25l2.5 1.75v4l5-2.5v-4l2.5-4.25l2.5 1.75v4l5-2.5v3l-30 15Z" fill="var(--paper)"/></g></g></svg></span>
             <span class="aml-scene-pill-dot" aria-hidden="true"></span>
             <span id="aml-bg-mode-label">الخلفية: الكعبة والحرمين</span>
             <svg class="aml-scene-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -967,6 +972,12 @@ export function renderLayout(props: LayoutProps): string {
               <span class="aml-card-surah-name" id="aml-art-surah-name">سورة الفاتحة</span>
               <span class="aml-card-surah-meta" id="aml-art-surah-meta">مكية · ٧ آيات · الجزء ١</span>
             </div>
+          </div>
+          <!-- Track info shown when Quran view is off (music-player style) -->
+          <div class="aml-track-info" aria-hidden="true">
+            <h2 class="aml-surah-title" id="aml-fs-surah-title">سورة الفاتحة</h2>
+            <p class="aml-reciter-name" id="aml-fs-reciter-name">هيثم الدخين</p>
+            <p class="aml-ayah-label" id="aml-fs-ayah-label">الآية ١</p>
           </div>
         </div>
 
@@ -1033,6 +1044,10 @@ export function renderLayout(props: LayoutProps): string {
             <button type="button" data-cast-btn class="aml-tool-btn" title="بث إلى جهاز" aria-label="بث إلى جهاز">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><path d="M2 12a9 9 0 0 1 8 8"/><path d="M2 16a5 5 0 0 1 4 4"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>
             </button>
+
+            <button type="button" id="aml-settings-btn-fullscreen" data-open-settings class="aml-tool-btn" title="الإعدادات" aria-label="الإعدادات">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
           </div>
 
           <!-- Mixer: Quran recitation + background sound (AeroUI volume sliders) -->
@@ -1056,7 +1071,7 @@ export function renderLayout(props: LayoutProps): string {
               <span class="pc-sync-label" id="aml-sync-offset-label">0ms</span>
               <button type="button" class="pc-sync-btn-step" id="aml-sync-plus-btn" aria-label="تأخير التزامن +100ms">+</button>
             </div>
-            <button type="button" id="aml-bg-next-btn" class="aml-more-item" title="تبديل صورة الخلفية الإسلامية">↻ الصورة التالية</button>
+            <button type="button" id="aml-bg-next-btn" class="aml-more-item" title="تبديل صورة الخلفية الإسلامية"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> الصورة التالية</button>
             <button type="button" id="aml-quran-view-btn" class="aml-more-item" aria-pressed="true">عرض نص القرآن</button>
             <button type="button" id="aml-toggle-translation-btn" class="aml-more-item active" data-i18n="btnTranslation">الترجمة</button>
             <button type="button" id="aml-repeat-btn" class="aml-more-item" aria-pressed="false">
@@ -1157,23 +1172,23 @@ export function renderLayout(props: LayoutProps): string {
           </div>
           <div class="settings-scene-grid" role="group" aria-label="مشهد الخلفية">
             <button type="button" class="settings-scene-opt is-active" data-settings-scene="islamic">
-              <span class="settings-scene-swatch is-islamic" aria-hidden="true"></span>
+              <span class="settings-scene-swatch is-islamic" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 240 240" fill="none"><circle cx="120" cy="120" r="88" fill="var(--halo)"/><g fill="var(--paper)" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(32.013 28.174) scale(0.723)" stroke-width="3.321"><ellipse cx="122" cy="198" rx="76" ry="4" fill="var(--tone)" stroke="none"/><path d="M48 158l30-15H198l-30 15Z" fill="var(--paper)"/><path d="M48 158v-7l2.5-4.25L53 148.5v4l5-2.5v-4l2.5-4.25L63 143.5v4l5-2.5v-4l2.5-4.25L73 138.5v4l5-2.5v-4v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v7H78Z" fill="var(--paper)"/><g transform="translate(-9 2)"><path d="M163 158l5-100h10l5 100" fill="var(--paper)"/><path d="M173 43V37"/><circle cx="173" cy="34.5" r="2.5" fill="var(--paper)"/><path d="M170.75 65.75V63.73c0-1.54 1.49-2.23 2.25-2.48c.77 .25 2.25 .94 2.25 2.48v2.02ZM170.5 88V83.5c0-3.41 1.65-4.95 2.5-5.5c.85 .55 2.5 2.09 2.5 5.5V88Zm-1 56v-5.4c0-4.09 2.31-5.94 3.5-6.6c1.19 .66 3.5 2.51 3.5 6.6V144Z" fill="var(--tone)" stroke-width="2.145"/><path d="M166 100l3.5 3l3.5-3l3.5 3l3.5-3m-14 6l3.5 3l3.5-3l3.5 3l3.5-3m-14 6l3.5 3l3.5-3l3.5 3l3.5-3" stroke-width="2.145"/><path d="M168 58c0-7 3-12 5-15c2 3 5 8 5 15Zm-5.5 13.5q0-2.5 2.5-2.5h16q2.5 0 2.5 2.5v0q0 2.5-2.5 2.5H165q-2.5 0-2.5-2.5Zm-1.5 22q0-2.5 2.5-2.5h19q2.5 0 2.5 2.5v0q0 2.5-2.5 2.5h-19q-2.5 0-2.5-2.5ZM159 123q0-3 3-3h22q3 0 3 3v0q0 3-3 3H162q-3 0-3-3Z" fill="var(--tone)"/></g><g transform="translate(20.16 28.44) scale(0.82)" stroke-width="4.05"><path d="M70 143h84v15H70Z" fill="var(--tone)"/><path d="M70 143V121c1-18 11-27 26-36c8-4 12-7 14-8h4c6 4 9 5 14 8c16 9 25 18 26 36v22Z" fill="var(--tone)"/><path d="M70 121h84m-72 0c1-18 17-31 26-40M98 121c0-20 8-33 13-41m15 41c0-20-8-33-13-41m29 41c-1-18-17-31-26-40" stroke-width="2.615"/><path d="M76.5 134v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Z" fill="var(--paper)" stroke-width="2.615"/><path d="M108 77l4-6l4 6Z" fill="var(--paper)"/><path d="M112 71V59"/><circle cx="112" cy="66" r="2" fill="var(--tone)" stroke-width="2.615"/><path d="M112 54q-3.5 5 0 7q3.5-2 0-7Z" fill="var(--tone)" stroke-width="2.615"/></g><path d="M48 158H168v38H48Z" fill="var(--paper)"/><path d="M168 158l30-15v38l-30 15Z" fill="var(--tone)"/><path d="M55.5 191V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Z" fill="var(--tone)" stroke-width="2.145"/><g transform="matrix(1 -.5 0 1 178 186)"><path d="M-3.5 0V-9.9C-3.5-17.4-1.19-20.79 0-22c1.19 1.21 3.5 4.6 3.5 12.1V0Z" fill="var(--paper)" stroke-width="2.145"/></g><g transform="matrix(1 -.5 0 1 190 180)"><path d="M-3.5 0V-9.9C-3.5-17.4-1.19-20.79 0-22c1.19 1.21 3.5 4.6 3.5 12.1V0Z" fill="var(--paper)" stroke-width="2.145"/></g><path d="M48 158v-7l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l2.5-4.25l2.5 1.75v4l5-2.5v-4l2.5-4.25l2.5 1.75v4l5-2.5v-4l2.5-4.25l2.5 1.75v4l5-2.5v3l-30 15Z" fill="var(--paper)"/></g></g></svg></span>
               <span data-settings-label="sceneIslamic">الكعبة والحرمين</span>
             </button>
             <button type="button" class="settings-scene-opt" data-settings-scene="rain">
-              <span class="settings-scene-swatch is-rain" aria-hidden="true"></span>
+              <span class="settings-scene-swatch is-rain" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg></span>
               <span data-settings-label="sceneRain">مطر</span>
             </button>
             <button type="button" class="settings-scene-opt" data-settings-scene="forest">
-              <span class="settings-scene-swatch is-forest" aria-hidden="true"></span>
+              <span class="settings-scene-swatch is-forest" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 3l4 4.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17Z"/><path d="M12 22v-3"/></svg></span>
               <span data-settings-label="sceneForest">غابة</span>
             </button>
             <button type="button" class="settings-scene-opt" data-settings-scene="dybg">
-              <span class="settings-scene-swatch is-dybg" aria-hidden="true"></span>
+              <span class="settings-scene-swatch is-dybg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg></span>
               <span data-settings-label="sceneDynamic">ديناميكية</span>
             </button>
             <button type="button" class="settings-scene-opt" data-settings-scene="off">
-              <span class="settings-scene-swatch is-off" aria-hidden="true"></span>
+              <span class="settings-scene-swatch is-off" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg></span>
               <span data-settings-label="sceneOff">بدون خلفية</span>
             </button>
           </div>

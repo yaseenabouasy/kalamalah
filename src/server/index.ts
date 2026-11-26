@@ -777,7 +777,7 @@ async function warmUpPrerenderCache(): Promise<void> {
 
 const PORT = Number(process.env.PORT || 3000);
 
-console.log(`🌙 Kalamalah Player SSR & Prerender Server running at http://localhost:${PORT}`);
+console.log(`(moon) Kalamalah Player SSR & Prerender Server running at http://localhost:${PORT}`);
 warmUpPrerenderCache();
 
 export default {

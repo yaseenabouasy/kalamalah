@@ -102,7 +102,8 @@ export class QuranPlayerController {
   private speeds = [0.75, 1, 1.25, 1.5, 2];
   private speedIndex = 1;
   private showFullscreenTranslation = true;
-  private showFullscreenTajweed = false;
+  private showFullscreenTajweed = true;
+  private showMixer = false;
   private fullscreenBgMode: SceneId = 'islamic';
   private scenes: BackgroundScenes | null = null;
   private showQuranText = true;
@@ -642,6 +643,11 @@ export class QuranPlayerController {
     setTxt('aml-now-reciter-link', `${t('reciterPrefix', locale)} ${reciterName}`);
     const amlRecLink = document.getElementById('aml-now-reciter-link') as HTMLAnchorElement | null;
     if (amlRecLink) amlRecLink.href = `/reciter-${reciter.slug}`;
+
+    // Fullscreen track info (music-player style, shown when Quran view is off)
+    setTxt('aml-fs-surah-title', `سورة ${surah.ar}`);
+    setTxt('aml-fs-reciter-name', reciterName);
+    setTxt('aml-fs-ayah-label', `${t('ayahPrefix', locale)} ${d(this.activeAyahNumber)}`);
 
     setTxt('aml-head-surah', `سورة ${surah.ar}`);
     setTxt('aml-head-reciter', `${t('reciterPrefix', locale)} ${reciterName}`);
@@ -1294,10 +1300,11 @@ export class QuranPlayerController {
         if (curSeg && curSeg.ayah !== this.activeAyahNumber) {
           this.activeAyahNumber = curSeg.ayah;
           const barAyahLbl = document.getElementById('qp-bar-current-ayah-label');
+          const fsAyahLbl = document.getElementById('aml-fs-ayah-label');
           const locale = getActiveLocale();
-          if (barAyahLbl) {
-            barAyahLbl.textContent = `${t('ayahPrefix', locale)} ${formatLocaleDigits(curSeg.ayah, locale)}`;
-          }
+          const ayahText = `${t('ayahPrefix', locale)} ${formatLocaleDigits(curSeg.ayah, locale)}`;
+          if (barAyahLbl) barAyahLbl.textContent = ayahText;
+          if (fsAyahLbl) fsAyahLbl.textContent = ayahText;
           this.updateMediaSessionMetadata();
         }
       }
@@ -1454,11 +1461,26 @@ export class QuranPlayerController {
       if (persist) writeSetting(SETTINGS_KEYS.ambientVolume, clamped.toFixed(2));
     };
 
+    const toggleMixer = (show?: boolean) => {
+      if (show === undefined) this.showMixer = !this.showMixer;
+      else this.showMixer = show;
+      const mixerEl = document.getElementById('aml-mixer');
+      if (mixerEl) {
+        if (this.showMixer) {
+          mixerEl.classList.remove('hidden');
+          mixerEl.style.display = 'flex';
+        } else {
+          mixerEl.classList.add('hidden');
+        }
+      }
+    };
+
     volSlider?.addEventListener('input', () => applyQuranVolume(Number(volSlider.value), true));
     ambientSlider?.addEventListener('input', () => applyAmbientVolume(Number(ambientSlider.value), true));
     muteBtn?.addEventListener('click', () => {
       this.audioEl.muted = !this.audioEl.muted;
       updateMuteVisual();
+      toggleMixer(this.audioEl.muted); // show mixer when muted, hide when unmuted
     });
 
     applyQuranVolume(Number(this.audioEl.volume));
@@ -1569,6 +1591,22 @@ export class QuranPlayerController {
 
     const sceneMenu = document.getElementById('aml-scene-menu');
     const bgModeBtn = document.getElementById('aml-bg-mode-btn');
+    const coverEl = document.getElementById('aml-bg-mode-cover');
+
+    // Background scene cover icons — Salah Icons (mosque) + Lucide (weather/nature/state)
+    const SCENE_ICONS: Record<SceneId, string> = {
+      islamic: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 240 240" fill="none"><circle cx="120" cy="120" r="88" fill="var(--halo)"/><g fill="var(--paper)" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(32.013 28.174) scale(0.723)" stroke-width="3.321"><ellipse cx="122" cy="198" rx="76" ry="4" fill="var(--tone)" stroke="none"/><path d="M48 158l30-15H198l-30 15Z" fill="var(--paper)"/><path d="M48 158v-7l2.5-4.25L53 148.5v4l5-2.5v-4l2.5-4.25L63 143.5v4l5-2.5v-4l2.5-4.25L73 138.5v4l5-2.5v-4v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v7H78Z" fill="var(--paper)"/><g transform="translate(-9 2)"><path d="M163 158l5-100h10l5 100" fill="var(--paper)"/><path d="M173 43V37"/><circle cx="173" cy="34.5" r="2.5" fill="var(--paper)"/><path d="M170.75 65.75V63.73c0-1.54 1.49-2.23 2.25-2.48c.77 .25 2.25 .94 2.25 2.48v2.02ZM170.5 88V83.5c0-3.41 1.65-4.95 2.5-5.5c.85 .55 2.5 2.09 2.5 5.5V88Zm-1 56v-5.4c0-4.09 2.31-5.94 3.5-6.6c1.19 .66 3.5 2.51 3.5 6.6V144Z" fill="var(--tone)" stroke-width="2.145"/><path d="M166 100l3.5 3l3.5-3l3.5 3l3.5-3m-14 6l3.5 3l3.5-3l3.5 3l3.5-3m-14 6l3.5 3l3.5-3l3.5 3l3.5-3" stroke-width="2.145"/><path d="M168 58c0-7 3-12 5-15c2 3 5 8 5 15Zm-5.5 13.5q0-2.5 2.5-2.5h16q2.5 0 2.5 2.5v0q0 2.5-2.5 2.5H165q-2.5 0-2.5-2.5Zm-1.5 22q0-2.5 2.5-2.5h19q2.5 0 2.5 2.5v0q0 2.5-2.5 2.5h-19q-2.5 0-2.5-2.5ZM159 123q0-3 3-3h22q3 0 3 3v0q0 3-3 3H162q-3 0-3-3Z" fill="var(--tone)"/></g><g transform="translate(20.16 28.44) scale(0.82)" stroke-width="4.05"><path d="M70 143h84v15H70Z" fill="var(--tone)"/><path d="M70 143V121c1-18 11-27 26-36c8-4 12-7 14-8h4c6 4 9 5 14 8c16 9 25 18 26 36v22Z" fill="var(--tone)"/><path d="M70 121h84m-72 0c1-18 17-31 26-40M98 121c0-20 8-33 13-41m15 41c0-20-8-33-13-41m29 41c-1-18-17-31-26-40" stroke-width="2.615"/><path d="M76.5 134v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Zm11 0v-5a2.5 2.5 0 0 1 5 0v5Z" fill="var(--paper)" stroke-width="2.615"/><path d="M108 77l4-6l4 6Z" fill="var(--paper)"/><path d="M112 71V59"/><circle cx="112" cy="66" r="2" fill="var(--tone)" stroke-width="2.615"/><path d="M112 54q-3.5 5 0 7q3.5-2 0-7Z" fill="var(--tone)" stroke-width="2.615"/></g><path d="M48 158H168v38H48Z" fill="var(--paper)"/><path d="M168 158l30-15v38l-30 15Z" fill="var(--tone)"/><path d="M55.5 191V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Zm23 0V179.75c0-8.52 4.29-12.37 6.5-13.75c2.21 1.38 6.5 5.23 6.5 13.75V191Z" fill="var(--tone)" stroke-width="2.145"/><g transform="matrix(1 -.5 0 1 178 186)"><path d="M-3.5 0V-9.9C-3.5-17.4-1.19-20.79 0-22c1.19 1.21 3.5 4.6 3.5 12.1V0Z" fill="var(--paper)" stroke-width="2.145"/></g><g transform="matrix(1 -.5 0 1 190 180)"><path d="M-3.5 0V-9.9C-3.5-17.4-1.19-20.79 0-22c1.19 1.21 3.5 4.6 3.5 12.1V0Z" fill="var(--paper)" stroke-width="2.145"/></g><path d="M48 158v-7l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l3-3l3 3v4h6v-4l2.5-4.25l2.5 1.75v4l5-2.5v-4l2.5-4.25l2.5 1.75v4l5-2.5v-4l2.5-4.25l2.5 1.75v4l5-2.5v3l-30 15Z" fill="var(--paper)"/></g></g></svg>',
+      rain: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>',
+      forest: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 3l4 4.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17Z"/><path d="M12 22v-3"/></svg>',
+      dybg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>',
+      off: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>',
+    };
+
+    const setSceneCover = (scene: SceneId) => {
+      if (!coverEl) return;
+      coverEl.innerHTML = SCENE_ICONS[scene] ?? SCENE_ICONS.islamic;
+    };
+
     const setSceneMenuOpen = (open: boolean) => {
       sceneMenu?.classList.toggle('hidden', !open);
       bgModeBtn?.setAttribute('aria-expanded', String(open));
@@ -1585,6 +1623,7 @@ export class QuranPlayerController {
       const scene = (opt.getAttribute('data-scene') as SceneId) || 'islamic';
       this.setSceneMode(scene);
       setSceneMenuOpen(false);
+      setSceneCover(scene);
     });
 
     document.getElementById('aml-bg-next-btn')?.addEventListener('click', () => {
@@ -1592,6 +1631,14 @@ export class QuranPlayerController {
         this.showIslamicBackgroundSlide(this.islamicBgIndex + 1, false);
         this.startIslamicBgRotator();
       }
+    });
+
+    // Settings sheet from fullscreen (closes other panels first, then opens sheet)
+    document.getElementById('aml-settings-btn-fullscreen')?.addEventListener('click', (e) => {
+      document.getElementById('aml-more-panel')?.classList.add('hidden');
+      document.getElementById('aml-scene-menu')?.classList.add('hidden');
+      document.getElementById('aml-queue-panel')?.classList.add('hidden');
+      // settings-sheet.ts listens globally on [data-open-settings] and opens the sheet
     });
 
     // ── More panel (sync, background image, text view, translation, repeat, download)
@@ -1651,17 +1698,25 @@ export class QuranPlayerController {
     transBtn?.addEventListener('click', () => applyTranslation(!this.showFullscreenTranslation, true));
 
     const tjBtn = document.getElementById('aml-toggle-tajweed-btn');
-    const applyTajweed = (enabled: boolean, persist = false, rerender = true) => {
-      this.showFullscreenTajweed = enabled;
+    const applyQuranSide = (enabled: boolean, persist = false) => {
+      this.showQuranText = enabled;
       tjBtn?.classList.toggle('active', enabled);
       tjBtn?.setAttribute('aria-pressed', String(enabled));
+      if (persist) writeSetting(SETTINGS_KEYS.quranView, enabled ? '1' : '0');
+      this.applyQuranView();
+    };
+    tjBtn?.addEventListener('click', () => applyQuranSide(!this.showQuranText, true));
+
+    // Tajweed coloring stays settings-controlled (default ON). The fullscreen
+    // tajweed button no longer touches it — it now shows/hides the Quran side.
+    const applyTajweed = (enabled: boolean, persist = false, rerender = true) => {
+      this.showFullscreenTajweed = enabled;
       if (persist) writeSetting(SETTINGS_KEYS.tajweed, enabled ? '1' : '0');
       if (rerender) {
         this.renderFullscreenAyahsList();
         this.rebindAnimator();
       }
     };
-    tjBtn?.addEventListener('click', () => applyTajweed(!this.showFullscreenTajweed, true));
 
     // ── Ayah queue
     const queueBtn = document.getElementById('aml-queue-btn');
@@ -1690,7 +1745,10 @@ export class QuranPlayerController {
     // ── Settings sheet events
     window.addEventListener('kalamalah:scene-changed', (e: Event) => {
       const detail = (e as CustomEvent<{ scene: SceneId }>).detail;
-      if (detail?.scene) this.setSceneMode(detail.scene, false);
+      if (detail?.scene) {
+        this.setSceneMode(detail.scene, false);
+        setSceneCover(detail.scene);
+      }
     });
     window.addEventListener('kalamalah:quran-view-changed', (e: Event) => {
       this.showQuranText = (e as CustomEvent<{ enabled: boolean }>).detail?.enabled !== false;
@@ -1737,7 +1795,7 @@ export class QuranPlayerController {
 
     // Initial visual state
     transBtn?.classList.toggle('active', this.showFullscreenTranslation);
-    tjBtn?.classList.toggle('active', this.showFullscreenTajweed);
+    tjBtn?.classList.toggle('active', this.showQuranText);
     this.applyQuranView();
     this.applyDisplayMode();
 

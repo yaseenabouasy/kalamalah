@@ -157,11 +157,15 @@ html[data-theme="dark"] {
   --btn-gold-bg: #d6bb8a;
   --btn-gold-bg-hover: #ecd6a8;
   --btn-gold-fg: #090d16;
-  --emerald: #93b3a0;
-  --emerald-soft: rgba(147, 179, 160, 0.16);
-  --cyan: #93b3a0;
-  --cyan-soft: rgba(147, 179, 160, 0.16);
+  --emerald: #10b981;
+  --emerald-soft: rgba(16, 185, 129, 0.16);
+  --cyan: #22d3ee;
+  --cyan-soft: rgba(34, 211, 238, 0.16);
   --danger: #e0857a;
+  --halo: #12151a;
+  --ink: #c8a45d;
+  --tone: #c8a45d;
+  --paper: #f4efe4;
 
   --mushaf-paper: #171b21;
   --mushaf-frame: rgba(214, 187, 138, 0.24);
@@ -192,11 +196,15 @@ html[data-theme="light"] {
   --btn-gold-bg: #7a5614;  /* Darker button bg for white text contrast */
   --btn-gold-bg-hover: #5d4010;
   --btn-gold-fg: #ffffff;
-  --emerald: #2d5038;
-  --emerald-soft: rgba(63, 99, 80, 0.18);
-  --cyan: #2d5038;
-  --cyan-soft: rgba(63, 99, 80, 0.18);
+  --emerald: #047857;
+  --emerald-soft: rgba(4, 120, 87, 0.18);
+  --cyan: #0891b2;
+  --cyan-soft: rgba(8, 145, 178, 0.18);
   --danger: #a03022;
+  --halo: #fbf9f3;
+  --ink: #7a5614;
+  --tone: #7a5614;
+  --paper: #171a1f;
 
   --mushaf-paper: #ffffff;
   --mushaf-frame: rgba(154, 118, 56, 0.32);
@@ -2395,7 +2403,7 @@ html[data-theme="light"] .surah-listen-hero-title strong {
   border-radius: 999px;
   border: 1.5px solid var(--border-strong);
   background: var(--bg-subtle);
-  font-family: 'UthmanicHafs', 'Uthmani', serif !important;
+  font-family: 'Kitab', serif !important;
   font-size: 1.02rem;
   color: var(--gold);
   font-weight: 400;
@@ -3334,7 +3342,7 @@ html[data-theme="light"] .surah-listen-hero-title strong {
   padding: 2px 8px;
   border-radius: 6px;
   color: #fff;
-  background: var(--cyan);
+  background: var(--btn-gold-fg);
 }
 
 .tr-example-box {
@@ -3660,6 +3668,7 @@ html[data-theme="light"] .qp-lyrics-icon-btn img {
 }
 
 .qp-reciter-select-wrap {
+  position: relative;
   width: 210px;
 }
 
@@ -4267,6 +4276,15 @@ html[data-theme="light"] .qp-lyrics-icon-btn img {
   background: var(--emerald-soft);
   border-color: var(--emerald);
   color: var(--emerald);
+}
+
+/* Scene cover icons in settings sheet */
+.settings-scene-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 .dua-arabic-box {

@@ -12,6 +12,7 @@ dist/
 /scripts/translate-ui.js
 
 # Build artifacts & local files
+/public/js/
 /payload-dumper-go_2.1.0_windows_amd64_avx2.tar.gz
 /payload-dumper-go_2.1.0_windows_amd64_avx2.tar/
 /offsets.json

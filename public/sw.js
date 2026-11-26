@@ -4,9 +4,9 @@
  * GitHub Pages + content-hash filenames = immutable caching
  */
 
-const STATIC_CACHE = 'kalamalah-static-v4';
-const HTML_CACHE = 'kalamalah-html-v4';
-const API_CACHE = 'kalamalah-api-v4';
+const STATIC_CACHE = 'kalamalah-static-v5';
+const HTML_CACHE = 'kalamalah-html-v5';
+const API_CACHE = 'kalamalah-api-v5';
 
 // Install - cache critical assets (use allSettled so one 404 doesn't fail install)
 self.addEventListener('install', (event) => {

@@ -288,7 +288,7 @@ export function initSettingsSheet(): void {
 
     setToggleVisual(quranViewInput, readFlag(SETTINGS_KEYS.quranView, true));
     setToggleVisual(translationInput, readFlag(SETTINGS_KEYS.translation, true));
-    setToggleVisual(tajweedInput, readFlag(SETTINGS_KEYS.tajweed, false));
+    setToggleVisual(tajweedInput, readFlag(SETTINGS_KEYS.tajweed, true));
 
     const tashkeel = readSetting(SETTINGS_KEYS.tashkeel, 'all');
     tashkeelBtns.forEach((btn) =>
