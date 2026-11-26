@@ -520,6 +520,19 @@ export const DUAS_COLLECTION: DuaItem[] = [
     recommendedCount: 1,
     virtueAr: 'دعاء المرآة.',
   },
+  {
+    id: 'adhkar-refuge-allah',
+    category: 'adhkar',
+    titleAr: 'أعوذ بالله',
+    titleEn: 'Seeking Refuge in Allah',
+    arabicText: 'أَعُوذُ بِاللَّهِ السَّمِيعِ الْعَلِيمِ مِنَ الشَّيْطَانِ الرَّجِيمِ',
+    transliteration: "A'udhu billahis-samee'il-'aleemi minash-shaitanir-rajeem.",
+    translationEn: 'I seek refuge in Allah, the All-Hearing, the All-Knowing, from Satan, the accursed.',
+    sourceAr: 'سنن الترمذي (٣٣٨٢)',
+    sourceEn: 'Sunan At-Tirmidhi 3382',
+    recommendedCount: 3,
+    virtueAr: 'دعاء التعوذ بالله من الشيطان.',
+  },
 ];
 
 export const ASMA_UL_HUSNA: AsmaUlHusnaItem[] = [
