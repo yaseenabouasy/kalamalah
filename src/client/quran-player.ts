@@ -271,6 +271,15 @@ export class QuranPlayerController {
     } catch {}
     this.savePlaybackState(true, this.currentSurahNumber, reciterSlug, resumeAyah || 1, 0);
     this.onReciterExternalChange?.(reciterSlug);
+
+    // Immediately update the bottom player bar with the new reciter so the UI
+    // doesn't appear stuck on the old reciter while loadTrackMetadata loads.
+    const reciterMeta =
+      this.catalog.reciters.find((r) => r.slug === reciterSlug) ?? this.catalog.reciters[0]!;
+    const surahMeta =
+      this.catalog.surahs.find((s) => s.n === this.currentSurahNumber) ?? this.catalog.surahs[0]!;
+    this.updateNowPlayingLabels(surahMeta, reciterMeta);
+
     await this.loadTrackMetadata(this.currentSurahNumber, reciterSlug, autoPlay || wasPlaying, resumeAyah);
   }
 
@@ -282,6 +291,13 @@ export class QuranPlayerController {
         localStorage.setItem('kalamalah_reciter_slug', reciterSlug);
       } catch {}
       this.onReciterExternalChange?.(reciterSlug);
+
+      // Immediately update the bottom player bar with the new reciter.
+      const reciterMeta =
+        this.catalog.reciters.find((r) => r.slug === reciterSlug) ?? this.catalog.reciters[0]!;
+      const surahMeta =
+        this.catalog.surahs.find((s) => s.n === surahNumber) ?? this.catalog.surahs[0]!;
+      this.updateNowPlayingLabels(surahMeta, reciterMeta);
     }
     this.pendingRestoreTimeSec = 0;
     this.savePlaybackState(true, surahNumber, targetReciter, startAyah || 1, 0);
